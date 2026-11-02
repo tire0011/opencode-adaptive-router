@@ -37,7 +37,7 @@ export default Plugin.define({
       const models = Array.isArray(listed) ? listed : listed.data
       const session = await ctx.session.get({ sessionID: event.sessionID })
       const current = (session as unknown as { model?: { providerID?: string } }).model
-      const providerID = current?.providerID ?? (await ctx.model.default())?.providerID
+      const providerID = current?.providerID ?? (await ctx.model.default())?.data?.providerID
       const selected = selectModel(models, { currentProvider: providerID, crossProvider })
 
       // Fail safe: leave the currently selected model untouched.
