@@ -49,3 +49,9 @@ We welcome discussion about OpenCode plugin hooks, model discovery, outcome meas
 ## License
 
 MIT; see [LICENSE](LICENSE). Third-party code, if adopted, must retain its own copyright and license notices.
+
+## OpenCode v2 integration update (2026-11-02)
+
+[PR #49194](https://github.com/anomalyco/opencode/pull/49194) is merged: OpenCode v2 offers `opencode.models()` for searchable connected model metadata and an optional `model` parameter on the subagent tool. Explicit subagent model selection overrides the agent's configured model and the parent model. [Issue #6651](https://github.com/anomalyco/opencode/issues/6651) is closed.
+
+**We will reuse these native facilities rather than reimplement subagent model selection.** The remaining research is whether a local adaptive policy can improve choice quality, cost and latency from measured outcomes, and how a first-class `Auto` option should select the *primary* model. Built-in discovery and model selection do not themselves establish outcome-based learning.
