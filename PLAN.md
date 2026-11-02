@@ -77,3 +77,17 @@ This is a living plan, not a claim that any feature is implemented. Work should 
 Unit tests for policy and scoring; fixture-based plugin API tests; optional integration tests against a local mock OpenAI-compatible server; manual smoke tests with two real approved providers; benchmark reports showing cost, p50/p95 latency and verified success with confidence intervals.
 
 The project must **never run real provider profiling automatically on install**. All paid or data-bearing probes are opt-in.
+
+## OpenCode v2 discovery — update 2026-11-02
+
+[PR #49194](https://github.com/anomalyco/opencode/pull/49194) has merged into v2. It provides searchable `opencode.models({ query?, provider?, all?, limit?, offset? })` metadata and an optional subagent `model` override; [#6651](https://github.com/anomalyco/opencode/issues/6651) is closed.
+
+The first tasks must therefore change:
+
+- [ ] Verify the `opencode.models()` and `subagent(model)` APIs on a pinned v2 release and determine whether they are exposed directly to plugins or only agent tools.
+- [ ] Prototype using native model discovery rather than maintaining a separate provider catalog.
+- [ ] Measure how often the primary agent already selects a good subagent model, creating a baseline before implementing another router.
+- [ ] Identify the missing *primary-session* Auto model and outcome-learning functionality separately from subagent delegation.
+- [ ] Only implement a virtual Auto model or model interception if the existing v2 mechanisms do not cover the MVP.
+
+**Architecture decision:** do not rebuild model discovery or subagent switching. Focus on local evaluation, adaptive ranking and privacy-safe feedback. Preserve the no-GPU/no-local-LLM baseline.
