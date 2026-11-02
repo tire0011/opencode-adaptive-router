@@ -50,3 +50,16 @@ The community [opencode-auto-jev](https://github.com/jorgefspereira/opencode-aut
 ### Reuse policy
 
 Copy only code verified against current upstream APIs. Keep required MIT copyright/license notices and cite the original project. A clean, minimal adapter may be simpler than importing an external router or inheriting its service dependency.
+
+## OpenCode v2 native integration (verified merge, 2026-11-02)
+
+[PR #49194](https://github.com/anomalyco/opencode/pull/49194) adds an agent-facing `opencode.models({ query?, provider?, all?, limit?, offset? })` query with provider/model metadata and an optional `model` parameter to the subagent tool. Explicit selection takes precedence over agent configuration and parent model; IDs and variants are validated.
+
+**Design change:** Treat OpenCode as the source of truth for eligible model discovery and subagent dispatch. We should not duplicate either. The key unknown is whether plugins can call the same catalog directly through a stable API. Agent-facing tools are not necessarily equivalent to public plugin hooks.
+
+There are two distinct routing problems:
+
+1. **Primary-turn Auto routing:** requires investigation of plugin hooks and session UI semantics; the native subagent override does not automatically solve it.
+2. **Subagent selection:** already supported by v2; our policy may advise/model-score candidates, but OpenCode executes the selected subagent.
+
+Build a baseline that allows the primary model to select subagents using native tools. Add an adaptive selector only after demonstrating measurable value. Keep routing permissions and local outcome collection explicit.
