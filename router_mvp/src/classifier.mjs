@@ -7,6 +7,8 @@ const training = {
     'correct simple error small bug one line',
     'korrigiere tippfehler umbenennen kommentar dokumentation',
     'ändere text formatierung kleine einfache anpassung',
+    'rename a field in one file',
+    'update docs and typos',
   ],
   medium: [
     'implement feature add endpoint validation tests',
@@ -15,6 +17,9 @@ const training = {
     'add parser new route handle errors',
     'implementiere funktion ergänze test und validierung',
     'behebe fehler refaktoriere methode und ergänze tests',
+    'repair parsing of invalid input',
+    'add new rest route with tests',
+    'implement endpoint and validation for input handling',
   ],
   complex: [
     'design distributed system architecture across services',
@@ -24,6 +29,9 @@ const training = {
     'optimize system performance bottleneck across modules',
     'entwirf architektur verteiltes system migration vieler projekte',
     'analysiere race condition parallelität transaktion sicherheit',
+    'plan a multi service migration with deadlocks',
+    'review distributed security architecture',
+    'redesign multiple interconnected services and system',
   ],
 }
 const labels = Object.keys(training)
