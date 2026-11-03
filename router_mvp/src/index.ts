@@ -33,6 +33,9 @@ export default Plugin.define({
     const allowedProviders = Array.isArray(ctx.options.allowedProviders)
       ? ctx.options.allowedProviders.filter((value): value is string => typeof value === 'string')
       : []
+    const allowedModels = Array.isArray(ctx.options.allowedModels)
+      ? ctx.options.allowedModels.filter((value): value is string => typeof value === 'string')
+      : []
     const crossProvider = ctx.options.crossProvider === true && allowedProviders.length > 0
     let verificationWrite = Promise.resolve()
     await ctx.tool.hook('execute.after', async (event) => {
@@ -140,6 +143,7 @@ export default Plugin.define({
         currentProvider: providerID,
         crossProvider,
         allowedProviders,
+        allowedModels,
         taskTier: classified.tier,
         feedbackStats: stats,
         transportStats,
