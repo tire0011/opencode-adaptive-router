@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [".."],
+  "model": "mock/pricey",
+  "providers": {
+    "mock": {
+      "name": "Mock Provider",
+      "env": ["MOCK_API_KEY"],
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": { "baseURL": "http://127.0.0.1:18083/v1" },
+      "models": {
+        "pricey": { "name": "Pricey", "cost": { "input": 10, "output": 10 }, "capabilities": { "toolcall": true } },
+        "cheap": { "name": "Cheap", "cost": { "input": 1, "output": 1 }, "capabilities": { "toolcall": true } },
+        "ultra": { "name": "Ultra Budget", "cost": { "input": 0.25, "output": 0.25 }, "capabilities": { "toolcall": true } },
+        "notools": { "name": "No Tools", "cost": { "input": 0.01, "output": 0.01 }, "capabilities": { "tools": false } },
+        "unknown": { "name": "Unknown Cost", "capabilities": { "toolcall": true } }
+      }
+    }
+  }
+}
