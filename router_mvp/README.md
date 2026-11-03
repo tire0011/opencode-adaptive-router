@@ -50,6 +50,8 @@ From `router_mvp`, run `npm install` and `npm run test:e2e` (Node.js 22+). The s
 
 The test suite uses local ports 18083 and a temporary OpenCode session store. It is a functional integration test, not a quality/complexity benchmark.
 
+Run `npm run eval:classifier` for a separate 12-prompt English/German smoke matrix. It currently gets 11/12 on this **small manually curated set**, with unknown vocabulary often falling back to `simple`. This is not a representative held-out corpus or reliable accuracy estimate; independent real-world labeled examples and calibration are needed.
+
 ## Important limitations / next verification
 
 1. Manually test TUI `/models` selection and switching on Windows and Unix.
