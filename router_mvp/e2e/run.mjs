@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import './fake-provider.mjs'
 
 // @opencode/cli ships its executable as bin/opencode.exe on every platform.
@@ -11,17 +14,25 @@ const cwd = fileURLToPath(new URL('.', import.meta.url))
 const env = { ...process.env, OPENCODE_CONFIG: fileURLToPath(new URL('./opencode.jsonc', import.meta.url)), MOCK_API_KEY:'test' }
 
 async function run(args, alternateConfig, prompt='say fake ok') {
-  const proc = spawn(cli, ['run', '--standalone', ...args, prompt], {cwd, env:alternateConfig ? {...env, OPENCODE_CONFIG: fileURLToPath(new URL('./opencode-no-eligible.jsonc', import.meta.url))} : env, stdio:['ignore','pipe','pipe']})
+  // Running the negative case inside e2e/ causes OpenCode to also discover
+  // e2e/opencode.jsonc, effectively re-enabling the other models on Windows.
+  const isolatedDir = alternateConfig ? mkdtempSync(join(tmpdir(), 'adaptive-router-e2e-')) : undefined
+  const proc = spawn(cli, ['run', '--standalone', ...args, prompt], {cwd:isolatedDir ?? cwd, env:alternateConfig ? {...env, OPENCODE_CONFIG: fileURLToPath(new URL('./opencode-no-eligible.jsonc', import.meta.url))} : env, stdio:['ignore','pipe','pipe']})
   let stdout = '', stderr = ''
   proc.stdout.on('data', chunk => stdout += chunk)
   proc.stderr.on('data', chunk => stderr += chunk)
-  const code = await Promise.race([
-    new Promise((resolve, reject) => {
-      proc.once('exit', resolve)
-      proc.once('error', reject)
-    }),
-    delay(25000).then(() => {proc.kill(); return 'timeout'}),
-  ])
+  let code
+  try {
+    code = await Promise.race([
+      new Promise((resolve, reject) => {
+        proc.once('exit', resolve)
+        proc.once('error', reject)
+      }),
+      delay(25000).then(() => {proc.kill(); return 'timeout'}),
+    ])
+  } finally {
+    if (isolatedDir) rmSync(isolatedDir, {recursive:true, force:true})
+  }
   console.log('[cli]', args.join(' '), 'exit=', code, 'stdout=', stdout.trim(), 'stderr=', stderr.slice(-350))
   return {code, stdout, stderr}
 }
