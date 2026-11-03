@@ -8,7 +8,7 @@ OpenCode v2 provides native model discovery (`ctx.model.list()`), session model 
 
 - Native connected-model inventory (no manual task/model table)
 - Deterministic selection of a tool-capable, enabled model with the lowest **known** listed cost
-- Default restriction to the current provider; cross-provider routing is explicit opt-in
+- Default restriction to the current provider; cross-provider routing requires an explicit provider allowlist
 - Session-scoped enable/disable commands
 - No local GPU, LLM, remote router or extra API key
 - Safe fallback to the current model when no candidate qualifies
@@ -39,9 +39,9 @@ Setup: local OpenAI-compatible mock provider with two models, `pricey` (cost 10)
 
 This confirms that the `prompt` hook fires, `switchModel` works during admission, and `ModelInfo.id` is the correct value for `switchModel`. Not tested: the interactive TUI.
 
-**Enterprise caution:** By default, only the current provider is considered. Cross-provider routing requires an explicit plugin option `{ "package": "./router_mvp", "options": { "crossProvider": true } }` and must only be used when every candidate is approved for the current repository. Do not try this against confidential code until routing and policy enforcement have been verified.
+**Enterprise caution:** By default, only the current provider is considered. Cross-provider routing requires explicit plugin options `{ "package": "./router_mvp", "options": { "crossProvider": true, "allowedProviders": ["local"] } }` and must only be used when every candidate is approved for the current repository. Do not try this against confidential code until routing and policy enforcement have been verified.
 
-## Important limitations / next verification
+If no eligible candidate has usable price metadata, the selector keeps the current model rather than guessing. Context and image-capability filtering are implemented in the selector; determining these requirements from actual user prompts remains future work.\n\n## Important limitations / next verification
 
 1. A global virtual `Auto` model in `/models` is **not implemented**. It requires proving the v2 virtual-provider lifecycle and avoiding a broken fallback model.
 2. We must distinguish explicit user model changes from plugin selection and avoid overriding intentional manual choice.
