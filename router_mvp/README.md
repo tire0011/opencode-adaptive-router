@@ -14,6 +14,7 @@ OpenCode v2 provides native model discovery (`ctx.model.list()`), session model 
 - Temporary transport-health fallback: models with at least three observed HTTP responses and a 50%+ error rate are excluded for up to five minutes since their latest error. Never bypasses provider allowlists, tool requirements, or the fail-closed behavior.
 - Passive build/test outcome counters from existing `tool.execute.after` hooks: only known shell test/build commands with a structured exit code are counted. The plugin never runs a test or build itself and never stores command text or tool output.
 - Default restriction to the current provider; cross-provider routing requires an explicit provider allowlist
+- Optional exact `allowedModels` list; when set, Auto never selects models absent from the list even if the provider exposes them later
 - Session-scoped enable/disable commands
 - No local GPU, LLM, remote router or extra API key
 - Safe fallback to the current model when no candidate qualifies
@@ -36,6 +37,26 @@ In a local clone of this repository, add the plugin path to your project `openco
 Run `opencode`, open `/models`, and choose **Auto (Adaptive Router)** (`adaptive-router/auto`). The prompt hook routes subsequent requests to an eligible real model. Alternatively, `/adaptive-auto-on` enables session routing without selecting the virtual model. Use `/adaptive-auto-off` to stop command-enabled routing. Inspect logs for `[adaptive-router] selected ...`. The TUI model picker has not yet been manually E2E-tested; CLI `--model adaptive-router/auto` works.
 
 **Enterprise caution:** By default, only the current provider is considered. Cross-provider routing requires explicit plugin options, for example `{ "package": "./router_mvp", "options": { "crossProvider": true, "allowedProviders": ["siemens"] } }`. Only list providers approved for the current repository. Do not try this against confidential code until routing and policy enforcement have been verified.
+
+To restrict Auto to **exactly three approved models**, configure the plugin entry as an object:
+
+```jsonc
+{
+  "model": "siemens/qwen-3.8-27b",
+  "plugins": [{
+    "package": "./router_mvp",
+    "options": {
+      "allowedModels": [
+        "siemens/deepseek-v4.1-flash",
+        "siemens/ministral-3-14b-instruct-2512",
+        "siemens/qwen-3.8-27b"
+      ]
+    }
+  }]
+}
+```
+
+The example limits **automatic routing only**. It is not an organizational policy engine and does not prevent a user from manually selecting other connected models. Enforce hard provider restrictions through the organization's OpenCode policies separately.
 
 If no eligible candidate has usable price metadata, the selector keeps the current model rather than guessing. Image attachments and required context can also filter models; full modality and prompt-size detection remain future work.
 
