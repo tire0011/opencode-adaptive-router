@@ -1,3 +1,5 @@
+import { chooseByFeedback } from './feedback.mjs'
+
 export function selectModel(models, options = {}) {
   const {
     currentProvider,
@@ -6,6 +8,7 @@ export function selectModel(models, options = {}) {
     requiredContext = 0,
     requiresImage = false,
     taskTier = 'simple',
+    feedbackStats,
   } = options;
   const allowed = new Set(allowedProviders);
   const eligible = models.filter((model) => {
@@ -39,6 +42,8 @@ export function selectModel(models, options = {}) {
   // Price is only a provisional capacity proxy, not proof of model quality.
   // Unknown-price candidates remain excluded from automatic escalation.
   const priced = ranked.filter(m => Number.isFinite(cost(m)));
+  const evaluated = chooseByFeedback(priced, taskTier, feedbackStats);
+  if (evaluated) return evaluated;
   if (taskTier === 'complex') return priced.at(-1);
   if (taskTier === 'medium') return priced[Math.floor((priced.length - 1) / 2)];
   return priced[0];
