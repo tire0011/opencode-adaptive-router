@@ -9,6 +9,7 @@ export function selectModel(models, options = {}) {
   const allowed = new Set(allowedProviders);
   const eligible = models.filter((model) => {
     if (!model || !model.providerID || !model.id) return false;
+    if (model.providerID === 'adaptive-router') return false;
     if (model.enabled === false || model.status === 'deprecated') return false;
     if (model.capabilities?.tools === false) return false;
     if (requiresImage && !model.capabilities?.input?.includes('image')) return false;
