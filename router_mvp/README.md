@@ -9,7 +9,7 @@ OpenCode v2 provides native model discovery (`ctx.model.list()`), session model 
 - Native connected-model inventory (no manual task/model table)
 - Deterministic selection of a tool-capable, enabled model with the lowest **known** listed cost
 - Default restriction to the current provider; cross-provider routing requires an explicit provider allowlist
-- Session-scoped enable/disable commands
+- Session-scoped enable/disable commands\n- Experimental `Auto (Adaptive Router)` virtual entry in `/models`
 - No local GPU, LLM, remote router or extra API key
 - Safe fallback to the current model when no candidate qualifies
 
@@ -26,11 +26,11 @@ In a local clone of this repository, add the plugin path to your project `openco
 }
 ```
 
-Run `opencode`, then execute `/adaptive-auto-on` once per session. Subsequent user prompts should be routed using the available model list. Use `/adaptive-auto-off` to stop. Inspect the OpenCode server log for `[adaptive-router] selected ...`.
+Run `opencode`, then select `Auto (Adaptive Router)` in `/models` **(experimental; E2E not yet verified)**, or execute `/adaptive-auto-on` once per session. Subsequent user prompts should be routed using the available model list. Use `/adaptive-auto-off` to stop. Inspect the OpenCode server log for `[adaptive-router] selected ...`.
 
 **Note:** `opencode run "/adaptive-auto-on"` does **not** execute the plugin command; the text is sent to the model as an ordinary prompt. Use the interactive UI or the server API (`session.command`) instead.
 
-## End-to-end verification (OpenCode v2.2.5, 2026-11-02)
+**Safety:** The virtual model uses an intentionally unreachable loopback endpoint. Its prompt hook must redirect to a real eligible model before dispatch; otherwise prompt admission should fail. Do not use this virtual option with confidential code until its behavior is verified.\n\n## End-to-end verification (OpenCode v2.2.5, 2026-11-02)
 
 Setup: local OpenAI-compatible mock provider with two models, `pricey` (cost 10) and `cheap` (cost 1); session started on `mock/pricey`; driven via `@opencode/client` against `opencode serve`.
 
@@ -41,7 +41,7 @@ This confirms that the `prompt` hook fires, `switchModel` works during admission
 
 **Enterprise caution:** By default, only the current provider is considered. Cross-provider routing requires explicit plugin options `{ "package": "./router_mvp", "options": { "crossProvider": true, "allowedProviders": ["local"] } }` and must only be used when every candidate is approved for the current repository. Do not try this against confidential code until routing and policy enforcement have been verified.
 
-If no eligible candidate has usable price metadata, the selector keeps the current model rather than guessing. Context and image-capability filtering are implemented in the selector; determining these requirements from actual user prompts remains future work.\n\n## Important limitations / next verification
+If no eligible candidate has usable price metadata, the selector keeps the current model rather than guessing. Context and image-capability filtering are implemented in the selector; determining these requirements from actual user prompts remains future work.\n\n## Important limitations / next verification\n\n- **New experimental feature:** verify the virtual model appears in `/models`, redirects before any provider HTTP call, persists Auto mode across turns, and respects later manual model selection. The earlier E2E covered only the slash-command mode.\n- Model-menu selection may display the real model after routing because `switchModel` updates the active session model.
 
 1. A global virtual `Auto` model in `/models` is **not implemented**. It requires proving the v2 virtual-provider lifecycle and avoiding a broken fallback model.
 2. We must distinguish explicit user model changes from plugin selection and avoid overriding intentional manual choice.
