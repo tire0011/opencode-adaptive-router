@@ -2,7 +2,7 @@
 
 **Local-first, self-configuring model selection for OpenCode.**
 
-> Status: OpenCode v2 technical spike in [router_mvp](router_mvp/README.md). Five selector tests pass; end-to-end OpenCode v2.2.3 integration and the model-picker Auto alias remain unverified.
+> Status: OpenCode v2 technical spike in [router_mvp](router_mvp/README.md). Seven selector tests pass; end-to-end routing verified against OpenCode v2.2.5 with a local mock provider. The model-picker Auto alias remains unverified.
 
 OpenCode supports many providers, but selecting the best connected model is still largely a manual decision. This project explores an opt-in **Auto** model that discovers eligible models, evaluates their capabilities, routes tasks, and improves its choices using real outcome signals.
 
