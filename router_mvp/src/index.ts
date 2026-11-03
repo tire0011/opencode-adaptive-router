@@ -2,6 +2,7 @@ import { Model, Plugin, Provider } from '@opencode/plugin'
 import { selectModel } from './selector.mjs'
 import { AUTO_MODEL, AUTO_PROVIDER, autoMode, isAutoModel } from './auto-state.mjs'
 import { classifyTask } from './classifier.mjs'
+import { recordFeedback } from './feedback.mjs'
 
 /** OpenCode v2 proof of concept. The native plugin API requires a live smoke test. */
 export default Plugin.define({
@@ -33,6 +34,21 @@ export default Plugin.define({
     const crossProvider = ctx.options.crossProvider === true && allowedProviders.length > 0
 
     await ctx.command.transform((editor) => {
+      for (const [name, positive] of [['adaptive-rate-good', true], ['adaptive-rate-bad', false]] as const) {
+        editor.add({
+          name,
+          description: positive ? 'Mark last Auto answer useful (local feedback)' : 'Mark last Auto answer unhelpful (local feedback)',
+          execute: async ({sessionID}) => {
+            const key = `decision/${sessionID}`
+            const decision = await ctx.storage.get(key)
+            if (!decision || typeof decision !== 'object') return
+            const stats = await ctx.storage.get('stats/v1')
+            await ctx.storage.set('stats/v1', recordFeedback(stats, decision, positive))
+            await ctx.storage.remove(key) // Consume once; never count repeated votes.
+            console.info(`[adaptive-router] feedback ${positive ? 'good' : 'bad'} stored locally`)
+          },
+        })
+      }
       editor.add({
         name: 'adaptive-auto-on',
         description: 'Enable local adaptive selection for this session',
@@ -76,11 +92,14 @@ export default Plugin.define({
       if (!providerID && !crossProvider) {
         throw new Error('[adaptive-router] No trusted base provider for Auto; select a real model first or configure allowedProviders')
       }
+      const classified = classifyTask(event.prompt.text)
+      const stats = await ctx.storage.get('stats/v1')
       const selected = selectModel(models, {
         currentProvider: providerID,
         crossProvider,
         allowedProviders,
-        taskTier: classifyTask(event.prompt.text).tier,
+        taskTier: classified.tier,
+        feedbackStats: stats,
       })
 
       // Fail safe: leave the currently selected model untouched.
@@ -96,6 +115,11 @@ export default Plugin.define({
       await ctx.storage.set(`auto/${event.sessionID}`, {
         enabled: true,
         lastSelected: { providerID: selected.providerID, id: selected.id },
+      })
+      // Store only tier and model ID. Never retain user prompt or source code.
+      await ctx.storage.set(`decision/${event.sessionID}`, {
+        tier: classified.tier,
+        model: {providerID:selected.providerID, id:selected.id},
       })
       console.info(`[adaptive-router] selected ${selected.providerID}/${selected.id}`)
     })
