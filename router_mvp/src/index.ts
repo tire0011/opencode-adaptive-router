@@ -164,6 +164,7 @@ export default Plugin.define({
         crossProvider,
         allowedProviders,
         allowedModels,
+        fallbackModel: defaultModel,
         taskTier: classified.tier,
         feedbackStats: stats,
         transportStats,
