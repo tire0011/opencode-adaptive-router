@@ -5,6 +5,7 @@ import { classifyTask } from './classifier.mjs'
 import { recordFeedback } from './feedback.mjs'
 import { recordTransport } from './telemetry.mjs'
 import { classifyVerification, recordVerification } from './outcomes.mjs'
+import { debugLog } from './diagnostics.mjs'
 
 /** OpenCode v2 proof of concept. The native plugin API requires a live smoke test. */
 export default Plugin.define({
@@ -37,6 +38,7 @@ export default Plugin.define({
       ? ctx.options.allowedModels.filter((value): value is string => typeof value === 'string')
       : []
     const crossProvider = ctx.options.crossProvider === true && allowedProviders.length > 0
+    await debugLog('plugin.setup', {allowedModels, allowedProviders, crossProvider})
     let verificationWrite = Promise.resolve()
     await ctx.tool.hook('execute.after', async (event) => {
       if (event.status !== 'completed') return
@@ -109,6 +111,8 @@ export default Plugin.define({
     })
 
     await ctx.session.hook('prompt', async (event) => {
+      let stage = 'session.get'
+      try {
       const session = await ctx.session.get({ sessionID: event.sessionID })
       const current = (session as unknown as { model?: { providerID?: string; id?: string } }).model
       const saved = await ctx.storage.get(`auto/${event.sessionID}`)
@@ -116,6 +120,7 @@ export default Plugin.define({
         ? saved as { enabled?: boolean; lastSelected?: { providerID: string; id: string } }
         : saved === true ? { enabled: true } : undefined
       const mode = autoMode(current, state)
+      await debugLog('prompt.mode', {mode, currentProvider:current?.providerID ?? null, currentModel:current?.id ?? null})
       if (mode === 'stop') {
         await ctx.storage.remove(`auto/${event.sessionID}`)
         await ctx.storage.remove(`decision/${event.sessionID}`)
@@ -125,13 +130,27 @@ export default Plugin.define({
 
       // Model.Info is produced by OpenCode's active-model registry, not by
       // a manually maintained provider/model mapping.
+      stage = 'model.list'
       const listed = await ctx.model.list()
       const models = Array.isArray(listed) ? listed : listed.data
-      const defaultProvider = (await ctx.model.default())?.data?.providerID
+      await debugLog('model.inventory', {
+        total:models.length,
+        approved:models.filter(m => allowedModels.includes(`${m.providerID}/${m.id}`)).map(m => ({
+          id:`${m.providerID}/${m.id}`,
+          tools:m.capabilities?.tools,
+          enabled:m.enabled !== false,
+          priceKnown:Array.isArray(m.cost) && typeof m.cost[0]?.input === 'number' && typeof m.cost[0]?.output === 'number',
+        })),
+      })
+      stage = 'model.default'
+      const defaultModel = (await ctx.model.default())?.data
+      const defaultProvider = defaultModel?.providerID
+      await debugLog('model.default', {providerID:defaultProvider ?? null, id:defaultModel?.id ?? null})
       const providerID = current?.providerID && !isAutoModel(current)
         ? current.providerID
         : state?.lastSelected?.providerID ?? (defaultProvider !== AUTO_PROVIDER ? defaultProvider : undefined)
       if (!providerID && !crossProvider) {
+        await debugLog('routing.blocked', {reason:'no trusted base provider'})
         throw new Error('[adaptive-router] No trusted base provider for Auto; select a real model first or configure allowedProviders')
       }
       const classified = classifyTask(event.prompt.text)
@@ -139,6 +158,7 @@ export default Plugin.define({
       const transportStats = await ctx.storage.get('transport/v1')
       const attachments = event.prompt.files ?? []
       const requiresImage = attachments.some(attachment => /\.(?:png|jpe?g|webp|gif|bmp)$/i.test(attachment.name ?? attachment.uri))
+      stage = 'model.select'
       const selected = selectModel(models, {
         currentProvider: providerID,
         crossProvider,
@@ -152,10 +172,13 @@ export default Plugin.define({
 
       // Fail safe: leave the currently selected model untouched.
       if (!selected) {
+        await debugLog('routing.blocked', {reason:'no eligible selected model', providerID, tier:classified.tier, requiresImage})
         if (isAutoModel(current)) throw new Error('[adaptive-router] Auto has no eligible real model; request blocked')
         console.warn('[adaptive-router] no eligible models; keeping current selection')
         return
       }
+      await debugLog('routing.selected', {model:`${selected.providerID}/${selected.id}`, tier:classified.tier})
+      stage = 'session.switchModel'
       await ctx.session.switchModel({
         sessionID: event.sessionID,
         model: { providerID: selected.providerID, id: selected.id },
@@ -170,6 +193,10 @@ export default Plugin.define({
         model: {providerID:selected.providerID, id:selected.id},
       })
       console.info(`[adaptive-router] selected ${selected.providerID}/${selected.id}`)
+      } catch (error) {
+        await debugLog('routing.error', {stage, errorType:error instanceof Error ? error.name : typeof error})
+        throw error
+      }
     })
   },
 })
