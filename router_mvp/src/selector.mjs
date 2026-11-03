@@ -9,6 +9,7 @@ export function selectModel(models, options = {}) {
     requiresImage = false,
     taskTier = 'simple',
     feedbackStats,
+    transportStats,
   } = options;
   const allowed = new Set(allowedProviders);
   const eligible = models.filter((model) => {
@@ -16,6 +17,10 @@ export function selectModel(models, options = {}) {
     if (model.providerID === 'adaptive-router') return false;
     if (model.enabled === false || model.status === 'deprecated') return false;
     if (model.capabilities?.tools === false) return false;
+    const health = transportStats?.[`${model.providerID}/${model.id}`];
+    // Only exclude repeatedly failing transport, not models with one transient error.
+    if (health?.responses >= 3 && health.httpErrors / health.responses >= 0.5 &&
+        typeof health.lastErrorAt === 'number' && Date.now() - health.lastErrorAt < 300000) return false;
     if (requiresImage && !model.capabilities?.input?.includes('image')) return false;
     if (requiredContext > 0 && (model.limit?.context ?? 0) < requiredContext) return false;
     if (crossProvider) {
