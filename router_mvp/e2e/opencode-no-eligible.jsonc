@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [".."],
+  "model": "mock/notools",
+  "providers": {
+    "mock": {
+      "name": "Mock Provider",
+      "env": ["MOCK_API_KEY"],
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": { "baseURL": "http://127.0.0.1:18083/v1" },
+      "models": {
+        "notools": { "name": "No Tools", "cost": { "input": 0.01, "output": 0.01 }, "capabilities": { "tools": false } }
+      }
+    }
+  }
+}
