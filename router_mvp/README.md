@@ -71,6 +71,20 @@ From `router_mvp`, run `npm install` and `npm run test:e2e` (Node.js 22+). The s
 
 The test suite uses local ports 18083 and a temporary OpenCode session store. It is a functional integration test, not a quality/complexity benchmark.
 
+### Opt-in local diagnostics
+
+If OpenCode prints only a generic `UnexpectedStatus: 500`, set `ADAPTIVE_ROUTER_DEBUG_LOG` to an absolute writable JSONL file path **before launching OpenCode**. The plugin logs the configured model/provider allowlists, recognized approved model IDs, tool support, presence/absence of cost metadata, routing stages, and the safe block reason. It does **not** log prompts, source code, HTTP bodies, headers, credentials, or raw exception messages. No file is written unless this environment variable is set.
+
+PowerShell example:
+
+```powershell
+$env:ADAPTIVE_ROUTER_DEBUG_LOG = Join-Path $env:TEMP "adaptive-router-debug.jsonl"
+opencode run --model adaptive-router/auto "Reply with OK"
+Get-Content $env:ADAPTIVE_ROUTER_DEBUG_LOG -Tail 30
+```
+
+Remove the environment variable when finished: `Remove-Item Env:ADAPTIVE_ROUTER_DEBUG_LOG`.
+
 Run `npm run eval:classifier` for a separate 12-prompt English/German smoke matrix. It currently gets 11/12 on this **small manually curated set**, with unknown vocabulary often falling back to `simple`. This is not a representative held-out corpus or reliable accuracy estimate; independent real-world labeled examples and calibration are needed.
 
 ## Important limitations / next verification
