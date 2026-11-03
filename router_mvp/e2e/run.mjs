@@ -17,7 +17,8 @@ async function run(args, alternateConfig, prompt='say fake ok') {
   // Running the negative case inside e2e/ causes OpenCode to also discover
   // e2e/opencode.jsonc, effectively re-enabling the other models on Windows.
   const isolatedDir = alternateConfig ? mkdtempSync(join(tmpdir(), 'adaptive-router-e2e-')) : undefined
-  const fixture = alternateConfig === 'unpriced' ? './opencode-unpriced.jsonc' : './opencode-no-eligible.jsonc'
+  const fixture = alternateConfig === 'unpriced' ? './opencode-unpriced.jsonc'
+    : alternateConfig === 'profiles' ? './opencode-profiles.jsonc' : './opencode-no-eligible.jsonc'
   const proc = spawn(cli, ['run', '--standalone', ...args, prompt], {cwd:isolatedDir ?? cwd, env:alternateConfig ? {...env, OPENCODE_CONFIG: fileURLToPath(new URL(fixture, import.meta.url))} : env, stdio:['ignore','pipe','pipe']})
   let stdout = '', stderr = ''
   proc.stdout.on('data', chunk => stdout += chunk)
@@ -70,6 +71,19 @@ try {
   const unpricedModels = (await models()).slice(unpricedBefore)
   assert(unpricedModels.length > 0 && unpricedModels.every(m => m === 'pricey'), `Unexpected unpriced fallback: ${unpricedModels}`)
   console.log('[PASS] No price metadata falls back to approved configured default')
+
+  for (const [label, prompt, expected] of [
+    ['Simple', 'Fix a simple typo in a variable name.', 'ministral-3-14b-instruct-2512'],
+    ['Medium', 'implement feature add endpoint tests', 'qwen-3.8-27b'],
+    ['Complex', 'design distributed system architecture across services', 'deepseek-v4.1-flash'],
+  ]) {
+    const first = (await models()).length
+    const result = await run(['--model','adaptive-router/auto'], 'profiles', prompt)
+    const observed = (await models()).slice(first)
+    assert.equal(result.code, 0, `${label} Siemens profile request failed`)
+    assert(observed.length > 0 && observed.every(id => id === expected), `${label}: expected ${expected}, got ${observed}`)
+    console.log(`[PASS] ${label} unpriced Siemens profile: ${observed.join(', ')}`)
+  }
 
   const before = (await models()).length
   const failClosed = await run(['--model','adaptive-router/auto'], true)
