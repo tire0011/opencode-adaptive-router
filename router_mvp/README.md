@@ -9,12 +9,14 @@ OpenCode v2 provides native model discovery (`ctx.model.list()`), session model 
 - Native connected-model inventory (no manual task/model table)
 - CPU-only offline multinomial Naive Bayes task classifier (small embedded examples, zero inference API calls)
 - Task-aware, deterministic selection among enabled tool-capable models with **known** listed costs: simple → cheapest; medium → middle price; complex → highest price
+- Optional **explicit user-feedback learning**: `/adaptive-rate-good` or `/adaptive-rate-bad` rates the last routed answer once. Aggregated model/tier ratings remain in local plugin storage; no prompt/source content is retained. Automatic preference changes require at least three ratings **per candidate model** in the same task tier, with all compared candidates rated.
 - Default restriction to the current provider; cross-provider routing requires an explicit provider allowlist
 - Session-scoped enable/disable commands
 - No local GPU, LLM, remote router or extra API key
 - Safe fallback to the current model when no candidate qualifies
 
-**Experimental:** This classifier uses a tiny built-in English/German training set. Its probability is **not calibrated**, and price is **not a validated measure of model quality**. Unrecognized tasks fall back to the cheapest suitable model. The current implementation neither learns from outcomes nor establishes that a higher-cost model is better. A future version should consume empirical per-model evaluations and use task requirements and measured success rates instead of price for escalation.
+**Experimental:** This classifier uses a tiny built-in English/German training set. Its probability is **not calibrated**, and price is **not a validated measure of model quality**. Unrecognized tasks fall back to the cheapest suitable model. The classifier is not retrained from outcomes, and a higher price does not establish better results. A future version should consume empirical per-model evaluations and use task requirements and measured success rates instead of price for escalation.
+Feedback is user-reported usefulness, **not automatically verified correctness**. A successful model response alone is never counted as success. Feedback currently updates stored aggregates (a small Beta-smoothed success ratio) rather than retraining the classifier. It is a proof of concept, not a robust bandit or statistically reliable benchmark.
 
 ## Try in OpenCode v2.2.5
 
@@ -49,6 +51,7 @@ The test suite uses local ports 18083 and a temporary OpenCode session store. It
 1. Manually test TUI `/models` selection and switching on Windows and Unix.
 2. Improve the no-eligible-model error exposed by OpenCode CLI; the virtual provider must never receive requests.
 3. Test cross-provider allowlists and policy enforcement with connected enterprise providers before using confidential code.
-4. Replace cost-tier escalation with model capability/quality evidence, diversify the task-classifier training set, calibrate confidence, and evaluate multilingual ambiguous prompts.
+4. Test feedback slash commands through TUI/session API, add opt-in local observation metrics (latency/failure separately from correctness), and guard simultaneous feedback writes.
+5. Replace cost-tier escalation with model capability/quality evidence, diversify the task-classifier training set, calibrate confidence, and evaluate multilingual ambiguous prompts.
 
 Unit tests: `npm test` (Node.js 20+; no dependencies required for the selector).
