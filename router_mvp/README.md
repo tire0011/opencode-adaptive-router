@@ -1,6 +1,6 @@
 # Adaptive Router — OpenCode v2 technical spike
 
-This directory contains a **proof of concept**, not a production-ready plugin. Tested: deterministic selector unit tests, `tsc --strict` against `@opencode/plugin` 2.2.5, and an end-to-end run in OpenCode v2.2.5 (see below).
+This directory contains a **proof of concept**, not a production-ready plugin. Verified against OpenCode **v2.2.5**, including a local fake-provider end-to-end test.
 
 OpenCode v2 provides native model discovery (`ctx.model.list()`), session model switching (`ctx.session.switchModel()`), prompt admission hooks and command transforms. Unlike the v1 `opencode-auto-jev` example, v2 uses `Plugin.define({ setup(ctx) })` and `plugins`, not the old `chat.message` hook or singular `plugin` config.
 
@@ -9,13 +9,13 @@ OpenCode v2 provides native model discovery (`ctx.model.list()`), session model 
 - Native connected-model inventory (no manual task/model table)
 - Deterministic selection of a tool-capable, enabled model with the lowest **known** listed cost
 - Default restriction to the current provider; cross-provider routing requires an explicit provider allowlist
-- Session-scoped enable/disable commands\n- Experimental `Auto (Adaptive Router)` virtual entry in `/models`
+- Session-scoped enable/disable commands
 - No local GPU, LLM, remote router or extra API key
 - Safe fallback to the current model when no candidate qualifies
 
 This simple selector is deliberately **not** a quality predictor. It does not classify task complexity or learn yet.
 
-## Try in OpenCode v2.2.3
+## Try in OpenCode v2.2.5
 
 In a local clone of this repository, add the plugin path to your project `opencode.jsonc` (merge with existing config):
 
@@ -26,25 +26,28 @@ In a local clone of this repository, add the plugin path to your project `openco
 }
 ```
 
-Run `opencode`, then select `Auto (Adaptive Router)` in `/models` **(experimental; E2E not yet verified)**, or execute `/adaptive-auto-on` once per session. Subsequent user prompts should be routed using the available model list. Use `/adaptive-auto-off` to stop. Inspect the OpenCode server log for `[adaptive-router] selected ...`.
+Run `opencode`, open `/models`, and choose **Auto (Adaptive Router)** (`adaptive-router/auto`). The prompt hook routes subsequent requests to an eligible real model. Alternatively, `/adaptive-auto-on` enables session routing without selecting the virtual model. Use `/adaptive-auto-off` to stop command-enabled routing. Inspect logs for `[adaptive-router] selected ...`. The TUI model picker has not yet been manually E2E-tested; CLI `--model adaptive-router/auto` works.
 
-**Note:** `opencode run "/adaptive-auto-on"` does **not** execute the plugin command; the text is sent to the model as an ordinary prompt. Use the interactive UI or the server API (`session.command`) instead.
+**Enterprise caution:** By default, only the current provider is considered. Cross-provider routing requires explicit plugin options, for example `{ "package": "./router_mvp", "options": { "crossProvider": true, "allowedProviders": ["local"] } }`. Only list providers approved for the current repository. Do not try this against confidential code until routing and policy enforcement have been verified.
 
-**Safety:** The virtual model uses an intentionally unreachable loopback endpoint. Its prompt hook must redirect to a real eligible model before dispatch; otherwise prompt admission should fail. Do not use this virtual option with confidential code until its behavior is verified.\n\n## End-to-end verification (OpenCode v2.2.5, 2026-11-02)
+If no eligible candidate has usable price metadata, the selector keeps the current model rather than guessing. Image attachments and required context can also filter models; full modality and prompt-size detection remain future work.
 
-Setup: local OpenAI-compatible mock provider with two models, `pricey` (cost 10) and `cheap` (cost 1); session started on `mock/pricey`; driven via `@opencode/client` against `opencode serve`.
+## Reproducible local E2E
 
-- After `session.command("adaptive-auto-on")`, model requests went to `cheap`, the session model switched to `mock/cheap`, and the log showed `[adaptive-router] selected mock/cheap`.
-- Control run without enabling: requests stayed on `pricey`.
+From `router_mvp`, run `npm install` and `npm run test:e2e` (Node.js 22+). The suite starts a local fake OpenAI-compatible provider, launches OpenCode v2.2.5 in standalone mode, and uses a disposable configuration. It does **not** call external model APIs. It checks:
 
-This confirms that the `prompt` hook fires, `switchModel` works during admission, and `ModelInfo.id` is the correct value for `switchModel`. Not tested: the interactive TUI.
+- `Auto` selects the cheapest tool-capable model among `pricey`, `cheap`, `ultra`, `notools`, and `unknown` (the intentionally cheaper `notools` must be rejected).
+- The configured default stays unchanged unless Auto is explicitly selected.
+- A manual model selection wins and persists in the same session.
+- Auto fails closed when no tool-capable model is available, with no requests reaching the provider (currently surfaced by OpenCode CLI as `UnexpectedStatus: 500`).
 
-**Enterprise caution:** By default, only the current provider is considered. Cross-provider routing requires explicit plugin options `{ "package": "./router_mvp", "options": { "crossProvider": true, "allowedProviders": ["local"] } }` and must only be used when every candidate is approved for the current repository. Do not try this against confidential code until routing and policy enforcement have been verified.
+The test suite uses local ports 18083 and a temporary OpenCode session store. It is a functional integration test, not a quality/complexity benchmark.
 
-If no eligible candidate has usable price metadata, the selector keeps the current model rather than guessing. Context and image-capability filtering are implemented in the selector; determining these requirements from actual user prompts remains future work.\n\n## Important limitations / next verification\n\n- **New experimental feature:** verify the virtual model appears in `/models`, redirects before any provider HTTP call, persists Auto mode across turns, and respects later manual model selection. The earlier E2E covered only the slash-command mode.\n- Model-menu selection may display the real model after routing because `switchModel` updates the active session model.
+## Important limitations / next verification
 
-1. A global virtual `Auto` model in `/models` is **not implemented**. It requires proving the v2 virtual-provider lifecycle and avoiding a broken fallback model.
-2. We must distinguish explicit user model changes from plugin selection and avoid overriding intentional manual choice.
-3. Measure real model outcomes before adding learning; a cheapest-first baseline is not equivalent to an intelligent auto-router.
+1. Manually test TUI `/models` selection and switching on Windows and Unix.
+2. Improve the no-eligible-model error exposed by OpenCode CLI; the virtual provider must never receive requests.
+3. Test cross-provider allowlists and policy enforcement with connected enterprise providers before using confidential code.
+4. Measure real model outcomes before adding learning; a cheapest-first baseline is not equivalent to an intelligent auto-router.
 
 Unit tests: `npm test` (Node.js 20+; no dependencies required for the selector).
