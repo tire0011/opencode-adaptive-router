@@ -8,6 +8,9 @@ const model = (providerID, id, price, extra = {}) => ({
 });
 
 test('returns undefined with no candidates', () => assert.equal(selectModel([]), undefined));
+test('virtual Auto model is never a dispatch target', () => {
+  assert.equal(selectModel([model('adaptive-router','auto',0),model('mock','real',1)])?.id,'real');
+});
 test('selects lowest known cost', () => {
   assert.equal(selectModel([model('p','expensive',5), model('p','cheap',1)])?.id, 'cheap');
 });
