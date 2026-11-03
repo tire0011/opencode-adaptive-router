@@ -1,6 +1,7 @@
 import { Model, Plugin, Provider } from '@opencode/plugin'
 import { selectModel } from './selector.mjs'
 import { AUTO_MODEL, AUTO_PROVIDER, autoMode, isAutoModel } from './auto-state.mjs'
+import { classifyTask } from './classifier.mjs'
 
 /** OpenCode v2 proof of concept. The native plugin API requires a live smoke test. */
 export default Plugin.define({
@@ -79,6 +80,7 @@ export default Plugin.define({
         currentProvider: providerID,
         crossProvider,
         allowedProviders,
+        taskTier: classifyTask(event.prompt.text).tier,
       })
 
       // Fail safe: leave the currently selected model untouched.
