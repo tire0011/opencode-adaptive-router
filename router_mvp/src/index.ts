@@ -3,6 +3,7 @@ import { selectModel } from './selector.mjs'
 import { AUTO_MODEL, AUTO_PROVIDER, autoMode, isAutoModel } from './auto-state.mjs'
 import { classifyTask } from './classifier.mjs'
 import { recordFeedback } from './feedback.mjs'
+import { recordTransport } from './telemetry.mjs'
 
 /** OpenCode v2 proof of concept. The native plugin API requires a live smoke test. */
 export default Plugin.define({
@@ -32,6 +33,28 @@ export default Plugin.define({
       ? ctx.options.allowedProviders.filter((value): value is string => typeof value === 'string')
       : []
     const crossProvider = ctx.options.crossProvider === true && allowedProviders.length > 0
+    // Request timings are ephemeral; persist only aggregated status/latency counts.
+    const started = new WeakMap<Request, number>()
+    let telemetryWrite = Promise.resolve()
+    await ctx.session.hook('http.request', (event) => {
+      if (event.kind === 'primary') started.set(event.request, Date.now())
+    })
+    await ctx.session.hook('http.response', async (event) => {
+      if (event.kind !== 'primary') return
+      const start = started.get(event.request)
+      started.delete(event.request)
+      // Capture only Auto-selected requests; do not instrument manual traffic.
+      const decision = await ctx.storage.get(`decision/${event.sessionID}`)
+      if (!decision || typeof decision !== 'object') return
+      const model = event.model as {providerID:string; id:string}
+      const selected = (decision as {model?:{providerID:string;id:string}}).model
+      if (!selected || selected.providerID !== model.providerID || selected.id !== model.id) return
+      telemetryWrite = telemetryWrite.then(async () => {
+        const stats = await ctx.storage.get('transport/v1')
+        await ctx.storage.set('transport/v1', recordTransport(stats, model, event.response.status, start === undefined ? NaN : Date.now() - start))
+      }).catch(error => console.warn('[adaptive-router] transport stats unavailable', error))
+      await telemetryWrite
+    })
 
     await ctx.command.transform((editor) => {
       for (const [name, positive] of [['adaptive-rate-good', true], ['adaptive-rate-bad', false]] as const) {
