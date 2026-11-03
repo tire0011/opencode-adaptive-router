@@ -4,6 +4,7 @@ import { AUTO_MODEL, AUTO_PROVIDER, autoMode, isAutoModel } from './auto-state.m
 import { classifyTask } from './classifier.mjs'
 import { recordFeedback } from './feedback.mjs'
 import { recordTransport } from './telemetry.mjs'
+import { classifyVerification, recordVerification } from './outcomes.mjs'
 
 /** OpenCode v2 proof of concept. The native plugin API requires a live smoke test. */
 export default Plugin.define({
@@ -33,6 +34,19 @@ export default Plugin.define({
       ? ctx.options.allowedProviders.filter((value): value is string => typeof value === 'string')
       : []
     const crossProvider = ctx.options.crossProvider === true && allowedProviders.length > 0
+    let verificationWrite = Promise.resolve()
+    await ctx.tool.hook('execute.after', async (event) => {
+      if (event.status !== 'completed') return
+      const outcome = classifyVerification(event.tool, event.input, event.result)
+      if (!outcome) return
+      const decision = await ctx.storage.get(`decision/${event.sessionID}`)
+      if (!decision || typeof decision !== 'object') return
+      verificationWrite = verificationWrite.then(async () => {
+        const stats = await ctx.storage.get('verification/v1')
+        await ctx.storage.set('verification/v1', recordVerification(stats, decision, outcome))
+      }).catch(error => console.warn('[adaptive-router] verification stats unavailable', error))
+      await verificationWrite
+    })
     // Request timings are ephemeral; persist only aggregated status/latency counts.
     const started = new WeakMap<Request, number>()
     let telemetryWrite = Promise.resolve()
@@ -85,6 +99,7 @@ export default Plugin.define({
         description: 'Disable local adaptive selection for this session',
         execute: async ({ sessionID }) => {
           await ctx.storage.remove(`auto/${sessionID}`)
+          await ctx.storage.remove(`decision/${sessionID}`)
           console.info('[adaptive-router] disabled for session', sessionID)
         },
       })
@@ -100,6 +115,7 @@ export default Plugin.define({
       const mode = autoMode(current, state)
       if (mode === 'stop') {
         await ctx.storage.remove(`auto/${event.sessionID}`)
+        await ctx.storage.remove(`decision/${event.sessionID}`)
         return
       }
       if (mode === 'off') return
@@ -117,12 +133,17 @@ export default Plugin.define({
       }
       const classified = classifyTask(event.prompt.text)
       const stats = await ctx.storage.get('stats/v1')
+      const transportStats = await ctx.storage.get('transport/v1')
+      const attachments = event.prompt.files ?? []
+      const requiresImage = attachments.some(attachment => /\.(?:png|jpe?g|webp|gif|bmp)$/i.test(attachment.name ?? attachment.uri))
       const selected = selectModel(models, {
         currentProvider: providerID,
         crossProvider,
         allowedProviders,
         taskTier: classified.tier,
         feedbackStats: stats,
+        transportStats,
+        requiresImage,
       })
 
       // Fail safe: leave the currently selected model untouched.
