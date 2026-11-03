@@ -5,6 +5,7 @@ export function selectModel(models, options = {}) {
     allowedProviders = [],
     requiredContext = 0,
     requiresImage = false,
+    taskTier = 'simple',
   } = options;
   const allowed = new Set(allowedProviders);
   const eligible = models.filter((model) => {
@@ -30,9 +31,15 @@ export function selectModel(models, options = {}) {
   // Unknown-cost candidates do not outrank priced candidates. If all prices
   // are unknown, the caller should preserve its selected model instead.
   if (!eligible.some((m) => Number.isFinite(cost(m)))) return undefined;
-  return eligible.toSorted((a, b) =>
+  const ranked = eligible.toSorted((a, b) =>
     cost(a) - cost(b) ||
     (b.limit?.context ?? 0) - (a.limit?.context ?? 0) ||
     `${a.providerID}/${a.id}`.localeCompare(`${b.providerID}/${b.id}`)
-  )[0];
+  );
+  // Price is only a provisional capacity proxy, not proof of model quality.
+  // Unknown-price candidates remain excluded from automatic escalation.
+  const priced = ranked.filter(m => Number.isFinite(cost(m)));
+  if (taskTier === 'complex') return priced.at(-1);
+  if (taskTier === 'medium') return priced[Math.floor((priced.length - 1) / 2)];
+  return priced[0];
 }
