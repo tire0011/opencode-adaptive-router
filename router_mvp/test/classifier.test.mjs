@@ -1,0 +1,23 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { classifyTask } from '../src/classifier.mjs'
+import { selectModel } from '../src/selector.mjs'
+
+test('classifies simple, medium and complex work locally', () => {
+  assert.equal(classifyTask('fix typo rename variable').tier, 'simple')
+  assert.equal(classifyTask('implement feature add endpoint tests').tier, 'medium')
+  assert.equal(classifyTask('design distributed system architecture across services').tier, 'complex')
+})
+test('unrecognized prompts use lowest-cost fallback', () => {
+  assert.deepEqual(classifyTask(''), {tier:'simple',confidence:0,source:'fallback'})
+  assert.equal(classifyTask('xyzzy plugh').source, 'fallback')
+})
+test('tier routing excludes no-tool models at all complexity levels', () => {
+  const models = [
+    {providerID:'mock',id:'notools',capabilities:{tools:false},cost:[{input:.01,output:.01}]},
+    ...[['ultra',.25],['cheap',1],['pricey',10]].map(([id,price]) => ({providerID:'mock',id,cost:[{input:price,output:price}],capabilities:{tools:true}})),
+  ]
+  assert.equal(selectModel(models,{currentProvider:'mock',taskTier:'simple'}).id,'ultra')
+  assert.equal(selectModel(models,{currentProvider:'mock',taskTier:'medium'}).id,'cheap')
+  assert.equal(selectModel(models,{currentProvider:'mock',taskTier:'complex'}).id,'pricey')
+})
