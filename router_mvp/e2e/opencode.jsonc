@@ -15,6 +15,15 @@
         "notools": { "name": "No Tools", "cost": { "input": 0.01, "output": 0.01 }, "capabilities": { "tools": false } },
         "unknown": { "name": "Unknown Cost", "capabilities": { "toolcall": true } }
       }
+    },
+    "outside": {
+      "name": "Other Provider (must not be used by default)",
+      "env": ["MOCK_API_KEY"],
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {"baseURL":"http://127.0.0.1:18083/v1"},
+      "models": {
+        "external": {"name":"External (Cheaper)","cost":{"input":0.001,"output":0.001},"capabilities":{"tools":true}}
+      }
     }
   }
 }
