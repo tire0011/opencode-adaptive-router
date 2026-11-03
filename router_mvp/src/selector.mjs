@@ -5,6 +5,7 @@ export function selectModel(models, options = {}) {
     currentProvider,
     crossProvider = false,
     allowedProviders = [],
+    allowedModels = [],
     requiredContext = 0,
     requiresImage = false,
     taskTier = 'simple',
@@ -12,9 +13,11 @@ export function selectModel(models, options = {}) {
     transportStats,
   } = options;
   const allowed = new Set(allowedProviders);
+  const modelAllowlist = new Set(allowedModels);
   const eligible = models.filter((model) => {
     if (!model || !model.providerID || !model.id) return false;
     if (model.providerID === 'adaptive-router') return false;
+    if (modelAllowlist.size > 0 && !modelAllowlist.has(`${model.providerID}/${model.id}`)) return false;
     if (model.enabled === false || model.status === 'deprecated') return false;
     if (model.capabilities?.tools === false) return false;
     const health = transportStats?.[`${model.providerID}/${model.id}`];
