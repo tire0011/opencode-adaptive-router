@@ -6,7 +6,8 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "test:e2e": "node e2e/run.mjs"
+    "test:e2e": "node e2e/run.mjs",
+    "eval:classifier": "node eval/classifier-eval.mjs"
   },
   "peerDependencies": { "@opencode/plugin": "*" },
   "devDependencies": { "@opencode/cli": "2.2.5", "@opencode/plugin": "2.2.5" }
