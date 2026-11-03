@@ -23,6 +23,13 @@ test('stays on current provider unless explicitly allowed', () => {
   assert.equal(selectModel(models,{currentProvider:'internal',crossProvider:true}),undefined);
   assert.equal(selectModel(models,{currentProvider:'internal',crossProvider:true,allowedProviders:['internal','external']})?.id,'cheap');
 });
+test('exact model allowlist excludes connected but unapproved models', () => {
+  const models = [model('anthropic','opus',0),model('local','qwen',3),model('local','new-unapproved',1)];
+  const allowedModels = ['local/qwen'];
+  assert.equal(selectModel(models,{currentProvider:'local',allowedModels})?.id,'qwen');
+  assert.equal(selectModel(models,{currentProvider:'anthropic',allowedModels}),undefined);
+  assert.equal(selectModel(models,{currentProvider:'local',crossProvider:true,allowedProviders:['anthropic','local'],allowedModels})?.id,'qwen');
+});
 test('unknown cost loses to known cost', () => {
   assert.equal(selectModel([model('p','unknown',0,{cost:[]}),model('p','known',2)])?.id,'known');
 });
