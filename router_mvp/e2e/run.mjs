@@ -1,19 +1,25 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
+import { fileURLToPath } from 'node:url'
 import './fake-provider.mjs'
 
-const cli = new URL('../node_modules/.bin/opencode', import.meta.url).pathname
-const cwd = new URL('.', import.meta.url).pathname
-const env = { ...process.env, OPENCODE_CONFIG: new URL('./opencode.jsonc', import.meta.url).pathname, MOCK_API_KEY:'test' }
+// @opencode/cli ships its executable as bin/opencode.exe on every platform.
+// Avoid the Unix-only .bin symlink and URL.pathname ("/C:/..." on Windows).
+const cli = fileURLToPath(new URL('../node_modules/@opencode/cli/bin/opencode.exe', import.meta.url))
+const cwd = fileURLToPath(new URL('.', import.meta.url))
+const env = { ...process.env, OPENCODE_CONFIG: fileURLToPath(new URL('./opencode.jsonc', import.meta.url)), MOCK_API_KEY:'test' }
 
 async function run(args, alternateConfig, prompt='say fake ok') {
-  const proc = spawn(cli, ['run', '--standalone', ...args, prompt], {cwd, env:alternateConfig ? {...env, OPENCODE_CONFIG: new URL('./opencode-no-eligible.jsonc', import.meta.url).pathname} : env, stdio:['ignore','pipe','pipe']})
+  const proc = spawn(cli, ['run', '--standalone', ...args, prompt], {cwd, env:alternateConfig ? {...env, OPENCODE_CONFIG: fileURLToPath(new URL('./opencode-no-eligible.jsonc', import.meta.url))} : env, stdio:['ignore','pipe','pipe']})
   let stdout = '', stderr = ''
   proc.stdout.on('data', chunk => stdout += chunk)
   proc.stderr.on('data', chunk => stderr += chunk)
   const code = await Promise.race([
-    new Promise(resolve => proc.once('exit', resolve)),
+    new Promise((resolve, reject) => {
+      proc.once('exit', resolve)
+      proc.once('error', reject)
+    }),
     delay(25000).then(() => {proc.kill(); return 'timeout'}),
   ])
   console.log('[cli]', args.join(' '), 'exit=', code, 'stdout=', stdout.trim(), 'stderr=', stderr.slice(-350))
