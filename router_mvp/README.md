@@ -15,6 +15,7 @@ OpenCode v2 provides native model discovery (`ctx.model.list()`), session model 
 - Passive build/test outcome counters from existing `tool.execute.after` hooks: only known shell test/build commands with a structured exit code are counted. The plugin never runs a test or build itself and never stores command text or tool output.
 - Default restriction to the current provider; cross-provider routing requires an explicit provider allowlist
 - Optional exact `allowedModels` list; when set, Auto never selects models absent from the list even if the provider exposes them later
+- If **all** eligible models lack pricing, Auto uses the configured real default model **only if** it survives every provider/model/tool/health filter; otherwise the request remains blocked. This allows internal providers without public price metadata to function safely, but does not infer quality tiers without evidence.
 - Session-scoped enable/disable commands
 - No local GPU, LLM, remote router or extra API key
 - Safe fallback to the current model when no candidate qualifies
@@ -65,6 +66,7 @@ If no eligible candidate has usable price metadata, the selector keeps the curre
 From `router_mvp`, run `npm install` and `npm run test:e2e` (Node.js 22+). The suite starts a local fake OpenAI-compatible provider, launches OpenCode v2.2.5 in standalone mode, and uses a disposable configuration. It does **not** call external model APIs. It checks:
 
 - `Auto` routes simple tasks to `ultra`, medium tasks to `cheap`, and complex tasks to `pricey` among `pricey`, `cheap`, `ultra`, `notools`, and `unknown` (the intentionally cheaper `notools` must be rejected).
+- An isolated no-price fake provider dispatches to the approved configured default rather than failing.
 - The configured default stays unchanged unless Auto is explicitly selected.
 - A manual model selection wins and persists in the same session.
 - Auto fails closed when no tool-capable model is available, with no requests reaching the provider (currently surfaced by OpenCode CLI as `UnexpectedStatus: 500`).
