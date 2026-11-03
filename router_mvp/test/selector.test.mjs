@@ -36,6 +36,18 @@ test('unknown cost loses to known cost', () => {
 test('does not select a model if no prices are known', () => {
   assert.equal(selectModel([model('p','unknown',0,{cost:[]})]),undefined);
 });
+test('unpriced models use only an eligible approved configured default', () => {
+  const models = [
+    model('local','qwen',0,{cost:[]}),
+    model('local','deepseek',0,{cost:[]}),
+    model('anthropic','opus',0,{cost:[]}),
+  ];
+  const options = {currentProvider:'local',allowedModels:['local/qwen','local/deepseek'],fallbackModel:{providerID:'local',id:'qwen'}};
+  assert.equal(selectModel(models,options)?.id,'qwen');
+  assert.equal(selectModel(models,{...options,fallbackModel:{providerID:'anthropic',id:'opus'}}),undefined);
+  assert.equal(selectModel(models,{...options,fallbackModel:{providerID:'local',id:'new'}}),undefined);
+  assert.equal(selectModel(models.map(m=>({...m,capabilities:{tools:false}})),options),undefined);
+});
 test('honors context and modality constraints', () => {
   const models = [model('p','text',0), model('p','vision',2,{capabilities:{tools:true,input:['text','image']}})];
   assert.equal(selectModel(models,{requiresImage:true})?.id,'vision');
