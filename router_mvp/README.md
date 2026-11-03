@@ -9,18 +9,20 @@ OpenCode v2 provides native model discovery (`ctx.model.list()`), session model 
 - Native connected-model inventory (no manual task/model table)
 - CPU-only offline multinomial Naive Bayes task classifier (small embedded examples, zero inference API calls)
 - Task-aware, deterministic selection among enabled tool-capable models with **known** listed costs: simple → cheapest; medium → middle price; complex → highest price
+- For the **three specifically approved Siemens models without price metadata**, provisional per-task profiles choose `ministral-3-14b-instruct-2512` (simple), `qwen-3.8-27b` (medium), or `deepseek-v4.1-flash` (complex). These are **experimental routing hypotheses, not verified model rankings**. Tool support, current-provider restrictions, exact model allowlists, model availability, context/image constraints, and transport health always filter candidates **before** the profile is considered.
 - Optional **explicit user-feedback learning**: `/adaptive-rate-good` or `/adaptive-rate-bad` rates the last routed answer once. Aggregated model/tier ratings remain in local plugin storage; no prompt/source content is retained. Automatic preference changes require at least three ratings **per candidate model** in the same task tier, with all compared candidates rated.
 - Local transport telemetry for Auto-routed primary model requests: response count, HTTP error count, and aggregate request latency; **no prompt, URL, headers, or response content**. These data inform temporary health exclusion, not model-quality rankings.
 - Temporary transport-health fallback: models with at least three observed HTTP responses and a 50%+ error rate are excluded for up to five minutes since their latest error. Never bypasses provider allowlists, tool requirements, or the fail-closed behavior.
 - Passive build/test outcome counters from existing `tool.execute.after` hooks: only known shell test/build commands with a structured exit code are counted. The plugin never runs a test or build itself and never stores command text or tool output.
 - Default restriction to the current provider; cross-provider routing requires an explicit provider allowlist
 - Optional exact `allowedModels` list; when set, Auto never selects models absent from the list even if the provider exposes them later
-- If **all** eligible models lack pricing, Auto uses the configured real default model **only if** it survives every provider/model/tool/health filter; otherwise the request remains blocked. This allows internal providers without public price metadata to function safely, but does not infer quality tiers without evidence.
+- If **all** eligible models lack pricing, Auto uses a complete, recognized model-profile group where available; otherwise it uses the configured real default model **only if** it survives every provider/model/tool/health filter. Unknown or mixed inventories are never ranked by guessed quality. A candidate without explicit tool-call capability metadata is excluded.
 - Session-scoped enable/disable commands
 - No local GPU, LLM, remote router or extra API key
 - Safe fallback to the current model when no candidate qualifies
 
-**Experimental:** This classifier uses a tiny built-in English/German training set. Its probability is **not calibrated**, and price is **not a validated measure of model quality**. Unrecognized tasks fall back to the cheapest suitable model. The classifier is not retrained from outcomes, and a higher price does not establish better results. A future version should consume empirical per-model evaluations and use task requirements and measured success rates instead of price for escalation.
+**Experimental:** This classifier uses a tiny built-in English/German training set. Its probability is **not calibrated**, and price is **not a validated measure of model quality**. Unrecognized tasks fall back to the simplest suitable routing tier. The classifier is not retrained from outcomes, and a higher price does not establish better results.
+The Siemens start profiles are deliberately low-confidence engineering hypotheses informed by upstream model descriptions, not numbers calibrated across a shared workload or proof that Siemens serves identical upstream weights: [Mistral model card](https://huggingface.co/mistralai/Ministral-3-14B-Instruct-2512), [Qwen model card](https://huggingface.co/Qwen/Qwen3.8-27B), [DeepSeek model card](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017). Public benchmarks use differing harnesses, so **their scores must not be directly compared**. For each task tier, the configured profile is replaced by local manual-feedback rankings only after **every eligible candidate** has at least three ratings. HTTP success alone does not count as quality.
 Feedback is user-reported usefulness, **not automatically verified correctness**. A successful model response alone is never counted as success. Feedback currently updates stored aggregates (a small Beta-smoothed success ratio) rather than retraining the classifier. It is a proof of concept, not a robust bandit or statistically reliable benchmark.
 HTTP status/latency metrics are likewise **not build/test outcomes**. The current `http.response` hook can only measure replies actually observed; timeouts and network failures without an HTTP response are not included. Build/test counters are observations, not causal attribution: a failing build could reflect pre-existing problems. They do **not** automatically affect model quality scores. The test/build detector ignores chained commands and outputs without structured exit codes. Concurrency of multiple OpenCode processes writing the same plugin storage and TUI feedback commands still need final integration verification.
 
@@ -59,7 +61,7 @@ To restrict Auto to **exactly three approved models**, configure the plugin entr
 
 The example limits **automatic routing only**. It is not an organizational policy engine and does not prevent a user from manually selecting other connected models. Enforce hard provider restrictions through the organization's OpenCode policies separately.
 
-If no eligible candidate has usable price metadata, the selector keeps the current model rather than guessing. Image attachments and required context can also filter models; full modality and prompt-size detection remain future work.
+If no eligible candidate has usable price metadata and no complete built-in profile applies, the selector keeps the approved configured default rather than guessing. Image attachments and required context can also filter models; full modality and prompt-size detection remain future work.
 
 ## Reproducible local E2E
 
@@ -67,6 +69,7 @@ From `router_mvp`, run `npm install` and `npm run test:e2e` (Node.js 22+). The s
 
 - `Auto` routes simple tasks to `ultra`, medium tasks to `cheap`, and complex tasks to `pricey` among `pricey`, `cheap`, `ultra`, `notools`, and `unknown` (the intentionally cheaper `notools` must be rejected).
 - An isolated no-price fake provider dispatches to the approved configured default rather than failing.
+- An isolated fake Siemens provider with **three unpriced, tool-capable models** checks simple/medium/complex model-profile dispatch without connecting to Siemens or sending code outside the machine.
 - The configured default stays unchanged unless Auto is explicitly selected.
 - A manual model selection wins and persists in the same session.
 - Auto fails closed when no tool-capable model is available, with no requests reaching the provider (currently surfaced by OpenCode CLI as `UnexpectedStatus: 500`).
@@ -95,6 +98,6 @@ Run `npm run eval:classifier` for a separate 12-prompt English/German smoke matr
 2. Improve the no-eligible-model error exposed by OpenCode CLI; the virtual provider must never receive requests.
 3. Test cross-provider allowlists and policy enforcement with connected enterprise providers before using confidential code.
 4. Test feedback slash commands, tool outcome hooks and transport telemetry through TUI/session API, include failed network requests without HTTP responses, and guard simultaneous feedback writes across processes.
-5. Replace cost-tier escalation with model capability/quality evidence, diversify the task-classifier training set, calibrate confidence, and evaluate multilingual ambiguous prompts.
+5. Validate the provisional Siemens profiles using a shared coding benchmark and local task/quality ratings; diversify the task-classifier training set, calibrate confidence, and evaluate multilingual ambiguous prompts.
 
 Unit tests: `npm test` (Node.js 20+; no dependencies required for the selector).
