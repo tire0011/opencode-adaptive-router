@@ -17,7 +17,8 @@ async function run(args, alternateConfig, prompt='say fake ok') {
   // Running the negative case inside e2e/ causes OpenCode to also discover
   // e2e/opencode.jsonc, effectively re-enabling the other models on Windows.
   const isolatedDir = alternateConfig ? mkdtempSync(join(tmpdir(), 'adaptive-router-e2e-')) : undefined
-  const proc = spawn(cli, ['run', '--standalone', ...args, prompt], {cwd:isolatedDir ?? cwd, env:alternateConfig ? {...env, OPENCODE_CONFIG: fileURLToPath(new URL('./opencode-no-eligible.jsonc', import.meta.url))} : env, stdio:['ignore','pipe','pipe']})
+  const fixture = alternateConfig === 'unpriced' ? './opencode-unpriced.jsonc' : './opencode-no-eligible.jsonc'
+  const proc = spawn(cli, ['run', '--standalone', ...args, prompt], {cwd:isolatedDir ?? cwd, env:alternateConfig ? {...env, OPENCODE_CONFIG: fileURLToPath(new URL(fixture, import.meta.url))} : env, stdio:['ignore','pipe','pipe']})
   let stdout = '', stderr = ''
   proc.stdout.on('data', chunk => stdout += chunk)
   proc.stderr.on('data', chunk => stderr += chunk)
@@ -62,6 +63,13 @@ try {
   await verify('Session Auto initially chooses cheapest', ['--session',session,'--model','adaptive-router/auto'], 'ultra')
   await verify('Manual switch in same session', ['--session',session,'--model','mock/pricey'], 'pricey')
   await verify('Manual switch remains active next prompt', ['--session',session], 'pricey')
+
+  const unpricedBefore = (await models()).length
+  const unpriced = await run(['--model','adaptive-router/auto'], 'unpriced')
+  assert.equal(unpriced.code, 0, 'Unpriced approved default should be used')
+  const unpricedModels = (await models()).slice(unpricedBefore)
+  assert(unpricedModels.length > 0 && unpricedModels.every(m => m === 'pricey'), `Unexpected unpriced fallback: ${unpricedModels}`)
+  console.log('[PASS] No price metadata falls back to approved configured default')
 
   const before = (await models()).length
   const failClosed = await run(['--model','adaptive-router/auto'], true)
