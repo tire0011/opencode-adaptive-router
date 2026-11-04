@@ -11,7 +11,9 @@ export function chooseByProfile(models, tier, stats) {
   if (!['simple', 'medium', 'complex'].includes(tier)) return undefined;
   const matches = models.filter(m => MODEL_PROFILES[`${m.providerID}/${m.id}`]);
   // Never apply incomplete public assumptions to a mixed/unknown inventory.
-  if (matches.length !== models.length || matches.length < 2) return undefined;
+  if (matches.length !== models.length || matches.length === 0) return undefined;
+  // Health filtering may leave just one recognized candidate; use it.
+  if (matches.length === 1) return matches[0];
   const feedback = matches.map(m => {
     const value = stats?.[`${tier}:${m.providerID}/${m.id}`];
     return value && Number.isFinite(value.positive) && Number.isFinite(value.negative)
