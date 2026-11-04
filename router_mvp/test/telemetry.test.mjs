@@ -28,3 +28,23 @@ test('repeated model HTTP failures trigger a healthy-model fallback', () => {
   const expired={'mock/sick':{responses:3,httpErrors:3,lastErrorAt:Date.now()-360000}}
   assert.equal(selectModel(models,{currentProvider:'mock',transportStats:expired}).id,'sick')
 })
+test('unpriced internal profile fails over only within approved models and recovers', () => {
+  const models = ['small','mid','large'].map(id => ({
+    providerID:'local', id, capabilities:{tools:true}, enabled:true,
+  }))
+  const options = {
+    currentProvider:'local', taskTier:'simple',
+    allowedModels:models.map(model => `${model.providerID}/${model.id}`),
+  }
+  const first = selectModel(models, options)
+  assert.equal(first.id, 'small')
+  let stats = {}
+  for (let i=0;i<3;i++) stats = recordTransport(stats, first, 503, 10)
+  assert.equal(selectModel(models, {...options,transportStats:stats}).id, 'mid')
+  const second = models[1]
+  for (let i=0;i<3;i++) stats = recordTransport(stats, second, 429, 10)
+  assert.equal(selectModel(models, {...options,transportStats:stats}).id, 'large')
+  const expired = Object.fromEntries(Object.entries(stats).map(([id, value]) =>
+    [id, {...value,lastErrorAt:Date.now()-360000}]))
+  assert.equal(selectModel(models, {...options,transportStats:expired}).id, first.id)
+})
