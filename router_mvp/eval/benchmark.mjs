@@ -1,7 +1,10 @@
 import {classifyTask} from '../src/classifier.mjs'
-import {cases} from './task-cases.mjs'
+import {cases as developmentCases} from './task-cases.mjs'
+import {cases as holdoutCases} from './holdout-cases.mjs'
 
 const tiers = ['simple', 'medium', 'complex']
+const holdout = process.argv.includes('--holdout')
+const cases = holdout ? holdoutCases : developmentCases
 const rows = Object.entries(cases).flatMap(([expected, prompts]) =>
   prompts.map(prompt => ({expected, prompt, ...classifyTask(prompt)})))
 const confusion = Object.fromEntries(tiers.map(expected => [expected,
@@ -16,6 +19,7 @@ const byTier = Object.fromEntries(tiers.map(tier => {
   return [tier, {count:expected,precision:predicted ? tp / predicted : 0,recall:tp / expected}]
 }))
 const report = {
+  dataset:holdout ? 'holdout-synthetic' : 'development-synthetic',
   count, correct, accuracy:correct / count, fallback,
   fallbackRate:fallback / count, confusion, byTier,
   misclassified:rows.filter(r => r.expected !== r.tier).map(({expected,tier,source,prompt}) => ({expected,actual:tier,source,prompt})),
@@ -24,6 +28,7 @@ const report = {
 if (process.argv.includes('--json')) {
   process.stdout.write(`${JSON.stringify(report,null,2)}\n`)
 } else {
+  console.log(`Dataset: ${report.dataset}`)
   console.log(`Accuracy: ${correct}/${count} (${(report.accuracy * 100).toFixed(1)}%)`)
   console.log(`Fallback: ${fallback}/${count} (${(report.fallbackRate * 100).toFixed(1)}%)`)
   console.log('Confusion matrix (expected rows / predicted columns):')
