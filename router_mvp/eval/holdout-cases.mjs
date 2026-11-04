@@ -1,0 +1,40 @@
+// Separate synthetic check set, authored without consulting classifier results.
+// Freeze after first evaluation; future tuning needs fresh external examples.
+export const cases = {
+  simple: [
+    'What is a dictionary in programming?',
+    'Respond using only the word done.',
+    'Fix the punctuation in a single error message.',
+    'Explain a stack versus a queue in two sentences.',
+    'Translate a short button caption to French.',
+    'Reorder a small list of imports.',
+    'Remove a redundant blank line in the README.',
+    'What does the status code 201 indicate?',
+    'Give a short example of a for loop.',
+    'Ändere einen Text in der Dokumentation.',
+  ],
+  medium: [
+    'Write a file uploader with progress and cancellation.',
+    'Build a parser for quoted command-line arguments.',
+    'Add authorization checks to one API controller.',
+    'Implement a debounce utility with automated tests.',
+    'Improve the error handling of an existing socket client.',
+    'Convert a synchronous library method to async.',
+    'Add cursor-based pagination to a query handler.',
+    'Debug inconsistent sort order in a single SQL query.',
+    'Implementiere einen Cache für eine Funktion.',
+    'Write a generic serializer for a small object graph.',
+  ],
+  complex: [
+    'Change a constant that determines encryption policy across all tenants.',
+    'Design an active-active replication strategy for a global platform.',
+    'Diagnose rare message duplication across a distributed workflow.',
+    'Plan the migration of an entire monolith into separately deployed services.',
+    'Review the authorization model shared by hundreds of applications.',
+    'Make a seemingly tiny protocol change affecting every deployed client.',
+    'Investigate inconsistent writes in a replicated database cluster.',
+    'Define disaster-recovery guarantees for multiple cloud regions.',
+    'Entwirf eine sichere Migration für viele Systeme.',
+    'Refactor a shared authentication package used by dozens of services.',
+  ],
+}
