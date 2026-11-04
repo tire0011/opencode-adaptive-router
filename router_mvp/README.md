@@ -21,7 +21,7 @@ OpenCode v2 provides native model discovery (`ctx.model.list()`), session model 
 - No local GPU, LLM, remote router or extra API key
 - Safe fallback to the current model when no candidate qualifies
 
-**Experimental:** This classifier uses a tiny built-in English/German training set. Its probability is **not calibrated**, and price is **not a validated measure of model quality**. Unrecognized tasks fall back to the simplest suitable routing tier. The classifier is not retrained from outcomes, and a higher price does not establish better results.
+**Experimental:** This classifier uses a tiny built-in English/German training set. Its probability is **not calibrated**, and price is **not a validated measure of model quality**. Unrecognized tasks conservatively fall back to `medium` (not necessarily the most capable model). The classifier is not retrained from outcomes, and a higher price does not establish better results.
 The internal start profiles are deliberately low-confidence engineering hypotheses informed by upstream model descriptions, not numbers calibrated across a shared workload or proof that internal serves identical upstream weights: [Mistral model card](https://huggingface.co/), [Qwen model card](https://huggingface.co/), [DeepSeek model card](https://huggingface.co/). Public benchmarks use differing harnesses, so **their scores must not be directly compared**. For each task tier, the configured profile is replaced by local manual-feedback rankings only after **every eligible candidate** has at least three ratings. HTTP success alone does not count as quality.
 Feedback is user-reported usefulness, **not automatically verified correctness**. A successful model response alone is never counted as success. Feedback currently updates stored aggregates (a small Beta-smoothed success ratio) rather than retraining the classifier. It is a proof of concept, not a robust bandit or statistically reliable benchmark.
 HTTP status/latency metrics are likewise **not build/test outcomes**. The current `http.response` hook can only measure replies actually observed; timeouts and network failures without an HTTP response are not included. Build/test counters are observations, not causal attribution: a failing build could reflect pre-existing problems. They do **not** automatically affect model quality scores. The test/build detector ignores chained commands and outputs without structured exit codes. Concurrency of multiple OpenCode processes writing the same plugin storage and TUI feedback commands still need final integration verification.
@@ -37,7 +37,7 @@ In a local clone of this repository, add the plugin path to your project `openco
 }
 ```
 
-Run `opencode`, open `/models`, and choose **Auto (Adaptive Router)** (`adaptive-router/auto`). The prompt hook routes subsequent requests to an eligible real model. Alternatively, `/adaptive-auto-on` enables session routing without selecting the virtual model. Use `/adaptive-auto-off` to stop command-enabled routing. Inspect logs for `[adaptive-router] selected ...`. The TUI model picker has not yet been manually E2E-tested; CLI `--model adaptive-router/auto` works.
+Run `opencode --standalone`, open `/models`, and choose **Auto (Adaptive Router)** (`adaptive-router/auto`). The prompt hook routes subsequent requests to an eligible real model. Alternatively, `/adaptive-auto-on` enables session routing without selecting the virtual model. Use `/adaptive-auto-off` to stop command-enabled routing. Inspect logs for `[adaptive-router] selected ...`. Windows TUI selection and `/adaptive-rate-good` were manually verified; the regular background-service mode needs separate validation. CLI `run --standalone --model adaptive-router/auto` works.
 
 **Enterprise caution:** By default, only the current provider is considered. Cross-provider routing requires explicit plugin options, for example `{ "package": "./router_mvp", "options": { "crossProvider": true, "allowedProviders": ["local"] } }`. Only list providers approved for the current repository. Do not try this against confidential code until routing and policy enforcement have been verified.
 
@@ -70,6 +70,7 @@ From `router_mvp`, run `npm install` and `npm run test:e2e` (Node.js 22+). The s
 - `Auto` routes simple tasks to `ultra`, medium tasks to `cheap`, and complex tasks to `pricey` among `pricey`, `cheap`, `ultra`, `notools`, and `unknown` (the intentionally cheaper `notools` must be rejected).
 - An isolated no-price fake provider dispatches to the approved configured default rather than failing.
 - An isolated fake internal provider with **three unpriced, tool-capable models** checks simple/medium/complex model-profile dispatch without connecting to internal or sending code outside the machine.
+- Unknown prompts conservatively route to the middle price/profile tier.
 - The configured default stays unchanged unless Auto is explicitly selected.
 - A manual model selection wins and persists in the same session.
 - Auto fails closed when no tool-capable model is available, with no requests reaching the provider (currently surfaced by OpenCode CLI as `UnexpectedStatus: 500`).
@@ -78,7 +79,7 @@ The test suite uses local ports 18083 and a temporary OpenCode session store. It
 
 ### Opt-in local diagnostics
 
-If OpenCode prints only a generic `UnexpectedStatus: 500`, set `ADAPTIVE_ROUTER_DEBUG_LOG` to an absolute writable JSONL file path **before launching OpenCode**. The plugin logs the configured model/provider allowlists, recognized approved model IDs, tool support, presence/absence of cost metadata, routing stages, and the safe block reason. It does **not** log prompts, source code, HTTP bodies, headers, credentials, or raw exception messages. No file is written unless this environment variable is set.
+If OpenCode prints only a generic `UnexpectedStatus: 500`, set `ADAPTIVE_ROUTER_DEBUG_LOG` to an absolute writable JSONL file path **before launching OpenCode**. The plugin logs configured allowlists, eligible model metadata, the classification tier and confidence, routing stages, feedback recorded/skipped, and safe block reasons. It does **not** log prompts, source code, HTTP bodies, headers, credentials, or raw exception messages. No file is written unless this environment variable is set.
 
 PowerShell example:
 
@@ -90,14 +91,14 @@ Get-Content $env:ADAPTIVE_ROUTER_DEBUG_LOG -Tail 30
 
 Remove the environment variable when finished: `Remove-Item Env:ADAPTIVE_ROUTER_DEBUG_LOG`.
 
-Run `npm run eval:classifier` for a separate 12-prompt English/German smoke matrix. It currently gets 11/12 on this **small manually curated set**, with unknown vocabulary often falling back to `simple`. This is not a representative held-out corpus or reliable accuracy estimate; independent real-world labeled examples and calibration are needed.
+Run `npm run eval:classifier` for a separate 12-prompt English/German smoke matrix. This is **small and manually curated**, not a representative held-out corpus or a reliable accuracy estimate; independent real-world labeled examples and calibration are needed.
 
 ## Important limitations / next verification
 
-1. Manually test TUI `/models` selection and switching on Windows and Unix.
+1. Test regular background-service mode, Unix TUI, and session reuse after service reload.
 2. Improve the no-eligible-model error exposed by OpenCode CLI; the virtual provider must never receive requests.
 3. Test cross-provider allowlists and policy enforcement with connected enterprise providers before using confidential code.
-4. Test feedback slash commands, tool outcome hooks and transport telemetry through TUI/session API, include failed network requests without HTTP responses, and guard simultaneous feedback writes across processes.
+4. Feedback command storage has been smoke-tested on Windows TUI. Further test tool outcome hooks and transport telemetry through TUI/session API, failed network requests without HTTP responses, and simultaneous writes across processes. The current HTTP-error fallback is applied on **subsequent selections**, not as an automatic retry of the failed request.
 5. Validate the provisional internal profiles using a shared coding benchmark and local task/quality ratings; diversify the task-classifier training set, calibrate confidence, and evaluate multilingual ambiguous prompts.
 
 Unit tests: `npm test` (Node.js 20+; no dependencies required for the selector).
