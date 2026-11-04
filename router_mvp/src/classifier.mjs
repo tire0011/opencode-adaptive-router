@@ -45,8 +45,39 @@ for (const label of labels) for (const sample of training[label]) for (const wor
   totals.set(label, totals.get(label) + 1)
 }
 
+// High-signal intent patterns complement the tiny word-frequency model. They
+// keep commonplace prompts out of the unknown-word fallback without an LLM call.
+const signals = {
+  simple: [
+    /\b(?:reply|respond|answer|say|print|output)\s+(?:with\s+)?(?:exactly\s+)?(?:ok|yes|no|hello|one word|a single word)\b/i,
+    /\b(?:typo|spelling|punctuation|whitespace|indentation|formatting|rename|comment|readme)\b/i,
+    /\b(?:tippfehler|rechtschreibung|formatierung|umbenennen|beschriftung)\b/i,
+  ],
+  medium: [
+    /\b(?:implement|implementiere|refactor|refaktoriere|fix|debug|behebe|repair|add|ergänze)\b.{0,65}\b(?:feature|endpoint|api|parser|validation|tests?|function|method|funktion|methode|test|validierung)\b/i,
+    /\b(?:unit tests?|integration tests?|error handling|rest api|json parser|endpunkt)\b/i,
+  ],
+  complex: [
+    /\b(?:distributed|verteilte[ns]?|multi[- ]service|system[- ]wide|codebase[- ]wide|architecture|architektur|race condition|deadlocks?|threat model)\b/i,
+    /\b(?:migrat(?:e|ion)|migration|redesign|neugestaltung|übergreifend)\b.{0,85}\b(?:database|schema|services?|projects?|codebase|datenbank|projekte|system)\b/i,
+    /\b(?:across|über|mehrere)\b.{0,50}\b(?:services?|modules?|projects?|systeme|projekte|module)\b/i,
+  ],
+}
+
+function classifySignals(text) {
+  const matches = Object.fromEntries(labels.map(tier => [tier, signals[tier].filter(pattern => pattern.test(text)).length]))
+  // Complexity wins conflicting scopes: e.g. "fix a typo across 300 services".
+  if (matches.complex) return {tier:'complex',confidence:0.85,source:'signals'}
+  if (matches.medium) return {tier:'medium',confidence:0.8,source:'signals'}
+  if (matches.simple) return {tier:'simple',confidence:0.8,source:'signals'}
+  return null
+}
+
 export function classifyTask(text) {
-  const words = tokens(typeof text === 'string' ? text.slice(0, 4000) : '')
+  const prompt = typeof text === 'string' ? text.slice(0, 4000) : ''
+  const signal = classifySignals(prompt)
+  if (signal) return signal
+  const words = tokens(prompt)
   const recognized = words.filter(word => vocabulary.has(word))
   // Unknown work must not silently be treated as a trivial change.
   if (recognized.length < 2) return { tier: 'medium', confidence: 0, source: 'fallback' }
