@@ -48,7 +48,8 @@ for (const label of labels) for (const sample of training[label]) for (const wor
 export function classifyTask(text) {
   const words = tokens(typeof text === 'string' ? text.slice(0, 4000) : '')
   const recognized = words.filter(word => vocabulary.has(word))
-  if (recognized.length < 2) return { tier: 'simple', confidence: 0, source: 'fallback' }
+  // Unknown work must not silently be treated as a trivial change.
+  if (recognized.length < 2) return { tier: 'medium', confidence: 0, source: 'fallback' }
   const scores = labels.map(label => {
     const count = counts.get(label)
     const denominator = totals.get(label) + vocabulary.size
