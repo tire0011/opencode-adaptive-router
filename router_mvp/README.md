@@ -109,10 +109,18 @@ benchmark (30 simple / 40 medium / 30 complex). Use
 `node eval/benchmark.mjs --json` for a machine-readable report with a confusion
 matrix, precision/recall by tier, fallback rate and individual errors.
 
+Run `node eval/benchmark.mjs --holdout` for 30 additional synthetic prompts
+(10 per tier) kept separate from the development examples. After classifier
+signal tuning, the development score was **98/100 (98%)**, but the first
+holdout evaluation reached only **20/30 (66.7%)**, with **30% fallback**.
+This gap is evidence of overfitting to the development examples; do not tune
+against the holdout and continue reporting it as independent performance.
+
 Prompts and reference labels are manually curated, not inferred from router
 output. They include English/German phrasing and potentially misleading scope
 cues. They are **not** representative samples of production traffic; results
-must not be presented as generalized accuracy or used to tune and then report
-performance on the same held-out set. No provider calls, credentials, or
+must not be presented as generalized accuracy. Future tuning needs a fresh
+evaluation set; reusing the current holdout for fixes would contaminate it.
+No provider calls, credentials, or
 proprietary task data are involved.
 
