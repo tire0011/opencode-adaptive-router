@@ -12,6 +12,19 @@ test('unrecognized prompts use a conservative medium fallback', () => {
   assert.deepEqual(classifyTask(''), {tier:'medium',confidence:0,source:'fallback'})
   assert.equal(classifyTask('xyzzy plugh').source, 'fallback')
 })
+test('recognizes common short prompts without a fallback', () => {
+  for (const prompt of ['Reply with exactly OK. Do not use tools.', 'Korrigiere den Tippfehler im Kommentar.']) {
+    const result = classifyTask(prompt)
+    assert.equal(result.tier, 'simple')
+    assert.equal(result.source, 'signals')
+    assert.ok(result.confidence > 0)
+  }
+  assert.equal(classifyTask('Implement a REST API with unit tests.').tier, 'medium')
+  assert.equal(classifyTask('Redesign database schema across multiple services.').tier, 'complex')
+})
+test('system-wide scope takes priority over a trivial keyword', () => {
+  assert.equal(classifyTask('Fix a typo across services in a distributed system.').tier, 'complex')
+})
 test('tier routing excludes no-tool models at all complexity levels', () => {
   const models = [
     {providerID:'mock',id:'notools',capabilities:{tools:false},cost:[{input:.01,output:.01}]},
