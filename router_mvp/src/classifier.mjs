@@ -50,14 +50,20 @@ for (const label of labels) for (const sample of training[label]) for (const wor
 const signals = {
   simple: [
     /\b(?:reply|respond|answer|say|print|output)\s+(?:with\s+)?(?:exactly\s+)?(?:ok|yes|no|hello|one word|a single word)\b/i,
+    /\b(?:return|reply|respond|output)\b.{0,35}\b(?:single|one)\s+word\b/i,
+    /\b(?:what (?:is|does)|explain|define|definition|difference between|list (?:two|three|four|five)|translate|sort)\b.{0,95}\b(?:briefly|sentence|short|mean|commands?|boolean|http|readme|unit test|const|names?|label)\b/i,
+    /\b(?:format|reformat|replace|change|add|remove|update|make)\b.{0,75}\b(?:short json|imports|markdown title|greeting string|missing newline|one icon|one line|single label)\b/i,
     /\b(?:typo|spelling|punctuation|whitespace|indentation|formatting|rename|comment|readme)\b/i,
     /\b(?:tippfehler|rechtschreibung|formatierung|umbenennen|beschriftung)\b/i,
   ],
   medium: [
+    /\b(?:cancellation tokens?|optimistic concurrency|debounce|dependency injection|injectable|binary.search|off.by.one|file watcher)\b/i,
     /\b(?:implement|implementiere|refactor|refaktoriere|fix|debug|behebe|repair|add|ergänze)\b.{0,65}\b(?:feature|endpoint|api|parser|validation|tests?|function|method|funktion|methode|test|validierung)\b/i,
     /\b(?:unit tests?|integration tests?|error handling|rest api|json parser|endpunkt)\b/i,
   ],
   complex: [
+    /\b(?:hundreds|thousands|all|every)\b.{0,65}\b(?:clients?|consumers?|repositories|systems?|services?|projects?)\b/i,
+    /\b(?:global failover|shared across services|multiple processes|replicated data|microservices|cascading failures)\b/i,
     /\b(?:distributed|verteilte[ns]?|multi[- ]service|system[- ]wide|codebase[- ]wide|architecture|architektur|race condition|deadlocks?|threat model)\b/i,
     /\b(?:migrat(?:e|ion)|migration|redesign|neugestaltung|übergreifend)\b.{0,85}\b(?:database|schema|services?|projects?|codebase|datenbank|projekte|system)\b/i,
     /\b(?:across|über|mehrere)\b.{0,50}\b(?:services?|modules?|projects?|systeme|projekte|module)\b/i,
