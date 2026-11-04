@@ -8,8 +8,8 @@ test('classifies simple, medium and complex work locally', () => {
   assert.equal(classifyTask('implement feature add endpoint tests').tier, 'medium')
   assert.equal(classifyTask('design distributed system architecture across services').tier, 'complex')
 })
-test('unrecognized prompts use lowest-cost fallback', () => {
-  assert.deepEqual(classifyTask(''), {tier:'simple',confidence:0,source:'fallback'})
+test('unrecognized prompts use a conservative medium fallback', () => {
+  assert.deepEqual(classifyTask(''), {tier:'medium',confidence:0,source:'fallback'})
   assert.equal(classifyTask('xyzzy plugh').source, 'fallback')
 })
 test('tier routing excludes no-tool models at all complexity levels', () => {
