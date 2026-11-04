@@ -24,6 +24,13 @@ test('recognizes common short prompts without a fallback', () => {
 })
 test('system-wide scope takes priority over a trivial keyword', () => {
   assert.equal(classifyTask('Fix a typo across services in a distributed system.').tier, 'complex')
+  assert.equal(classifyTask('Rename an API field used by hundreds of external clients.').tier, 'complex')
+  assert.equal(classifyTask('Change a single lock that coordinates multiple processes.').tier, 'complex')
+})
+test('short explanations stay simple and bounded implementation stays medium', () => {
+  assert.equal(classifyTask('What does HTTP 404 mean?').tier, 'simple')
+  assert.equal(classifyTask('Explain the difference between let and const briefly.').tier, 'simple')
+  assert.equal(classifyTask('Add optimistic concurrency checks to one update operation.').tier, 'medium')
 })
 test('tier routing excludes no-tool models at all complexity levels', () => {
   const models = [
