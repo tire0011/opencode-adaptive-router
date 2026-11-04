@@ -83,10 +83,19 @@ export default Plugin.define({
           execute: async ({sessionID}) => {
             const key = `decision/${sessionID}`
             const decision = await ctx.storage.get(key)
-            if (!decision || typeof decision !== 'object') return
+            if (!decision || typeof decision !== 'object') {
+              await debugLog('feedback.skipped', {reason:'no pending Auto decision', positive})
+              return
+            }
             const stats = await ctx.storage.get('stats/v1')
             await ctx.storage.set('stats/v1', recordFeedback(stats, decision, positive))
             await ctx.storage.remove(key) // Consume once; never count repeated votes.
+            const rated = decision as {tier?:string;model?:{providerID?:string;id?:string}}
+            await debugLog('feedback.recorded', {
+              positive,
+              tier:rated.tier ?? null,
+              model:rated.model?.providerID && rated.model?.id ? `${rated.model.providerID}/${rated.model.id}` : null,
+            })
             console.info(`[adaptive-router] feedback ${positive ? 'good' : 'bad'} stored locally`)
           },
         })
@@ -154,6 +163,7 @@ export default Plugin.define({
         throw new Error('[adaptive-router] No trusted base provider for Auto; select a real model first or configure allowedProviders')
       }
       const classified = classifyTask(event.prompt.text)
+      await debugLog('task.classified', {tier:classified.tier, confidence:classified.confidence, source:classified.source})
       const stats = await ctx.storage.get('stats/v1')
       const transportStats = await ctx.storage.get('transport/v1')
       const attachments = event.prompt.files ?? []
