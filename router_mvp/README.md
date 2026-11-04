@@ -102,3 +102,17 @@ Run `npm run eval:classifier` for a separate 12-prompt English/German smoke matr
 5. Validate the provisional internal profiles using a shared coding benchmark and local task/quality ratings; diversify the task-classifier training set, calibrate confidence, and evaluate multilingual ambiguous prompts.
 
 Unit tests: `npm test` (Node.js 20+; no dependencies required for the selector).
+# Offline routing benchmark
+
+From `router_mvp/`, run `npm run eval:benchmark` for a 100-prompt synthetic
+benchmark (30 simple / 40 medium / 30 complex). Use
+`node eval/benchmark.mjs --json` for a machine-readable report with a confusion
+matrix, precision/recall by tier, fallback rate and individual errors.
+
+Prompts and reference labels are manually curated, not inferred from router
+output. They include English/German phrasing and potentially misleading scope
+cues. They are **not** representative samples of production traffic; results
+must not be presented as generalized accuracy or used to tune and then report
+performance on the same held-out set. No provider calls, credentials, or
+proprietary task data are involved.
+
