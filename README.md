@@ -2,13 +2,13 @@
 
 **Local-first, self-configuring model selection for OpenCode.**
 
-> Status: OpenCode v2 technical spike in [router_mvp](router_mvp/README.md). Seven selector tests pass; end-to-end routing verified against OpenCode v2.2.5 with a local mock provider. The model-picker Auto alias remains unverified.
+> Status: **experimental alpha prototype** in [router_mvp](router_mvp/README.md), verified against OpenCode v2.2.5 with 35 passing unit tests, a local fake-provider E2E suite, and manual Windows CLI/TUI routing and feedback tests. Not validated for production or confidential workloads.
 
 OpenCode supports many providers, but selecting the best connected model is still largely a manual decision. This project explores an opt-in **Auto** model that discovers eligible models, evaluates their capabilities, routes tasks, and improves its choices using real outcome signals.
 
 ## Principles
 
-- **Zero manual model-to-task mappings.** Discover available models and learn their strengths instead of requiring `coding = model X`.
+- **Prefer measured model strengths.** Discover available models; temporary profiles for three approved unpriced Siemens models are explicitly experimental until comparative evidence replaces them.
 - **CPU-first.** No GPU is required. A quantized small local language model may help classify ambiguous tasks, but the router must also run without any local LLM.
 - **Local-first and private.** Discovery, metrics, policy checks and learning stay local. Never send prompts or source code to a third-party routing service by default.
 - **Respect provider boundaries.** Only route to connected and explicitly allowed providers. Enterprise restrictions must override adaptive decisions.
