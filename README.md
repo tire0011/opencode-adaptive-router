@@ -6,6 +6,19 @@
 
 OpenCode supports many providers, but selecting the best connected model is still largely a manual decision. This project explores an opt-in **Auto** model that discovers eligible models, evaluates their capabilities, routes tasks, and improves its choices using real outcome signals.
 
+## Try the alpha (OpenCode v2.2.5)
+
+The tagged GitHub plugin was installed and exercised successfully on a fresh Windows VM process, without publishing to npm. In PowerShell:
+
+```powershell
+opencode plugin add 'github:tire0011/opencode-adaptive-router#v0.1.0-alpha.1::path:router_mvp'
+opencode run --standalone --model adaptive-router/auto "Reply with exactly OK."
+```
+
+The `plugin add` command registers the GitHub package in your global `opencode.json`. Configure your real model provider separately. For enterprise use, restrict the plugin with an explicit `allowedModels` list (example in [router_mvp/README.md](router_mvp/README.md)); never assume automatic routing is an organizational policy boundary. Use `--standalone` for the verified CLI path; background-service mode has not yet been validated.
+
+This is a **source-only GitHub pre-release**, not an npm package. Known limitations include uncalibrated task classification, provisional unpriced-model profiles and no automatic retry of the same failed request. See the [alpha release](https://github.com/tire0011/opencode-adaptive-router/releases/tag/v0.1.0-alpha.1) for details.
+
 ## Principles
 
 - **Prefer measured model strengths.** Discover available models; temporary profiles for three approved unpriced Siemens models are explicitly experimental until comparative evidence replaces them.
