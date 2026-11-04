@@ -43,7 +43,7 @@ async function models() {
   return (await (await fetch('http://127.0.0.1:18083/requests')).json()).models
 }
 
-async function verify(label, args, expected, prompt) {
+async function verify(label, args, expected, prompt='fix typo rename variable') {
   const before = (await models()).length
   const response = await run(args, false, prompt)
   const selected = (await models()).slice(before)
@@ -56,6 +56,7 @@ async function verify(label, args, expected, prompt) {
 
 try {
   await verify('Auto picks cheapest tool-capable model', ['--model','adaptive-router/auto'], 'ultra')
+  await verify('Unrecognized prompt chooses conservative middle tier', ['--model','adaptive-router/auto'], 'cheap', 'xyzzy plugh')
   await verify('Medium coding task chooses middle tier', ['--model','adaptive-router/auto'], 'cheap', 'implement feature add endpoint tests')
   await verify('Complex task chooses highest priced tier', ['--model','adaptive-router/auto'], 'pricey', 'design distributed system architecture across services')
   await verify('Default without Auto stays unchanged', [], 'pricey')
@@ -76,6 +77,7 @@ try {
     ['Simple', 'Fix a simple typo in a variable name.', 'small'],
     ['Medium', 'implement feature add endpoint tests', 'mid'],
     ['Complex', 'design distributed system architecture across services', 'large'],
+    ['Unknown falls back to medium', 'xyzzy plugh', 'mid'],
   ]) {
     const first = (await models()).length
     const result = await run(['--model','adaptive-router/auto'], 'profiles', prompt)
