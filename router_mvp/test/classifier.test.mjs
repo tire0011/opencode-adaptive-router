@@ -34,3 +34,11 @@ test('tier routing excludes no-tool models at all complexity levels', () => {
   assert.equal(selectModel(models,{currentProvider:'mock',taskTier:'medium'}).id,'cheap')
   assert.equal(selectModel(models,{currentProvider:'mock',taskTier:'complex'}).id,'pricey')
 })
+test('umlauts at word start are matched', () => {
+  assert.equal(classifyTask('Refaktoriere übergreifend für alle Projekte').tier, 'complex')
+  assert.equal(classifyTask('Übergreifende Neugestaltung der Datenbank').tier, 'complex')
+})
+test('single topic words do not decide the tier', () => {
+  assert.equal(classifyTask('Fix typo in the architecture section of the README').tier, 'simple')
+  assert.notEqual(classifyTask('Update the README').source, 'signals')
+})

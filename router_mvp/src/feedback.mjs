@@ -10,16 +10,54 @@ export function recordFeedback(stats, decision, positive) {
   return {...stats, [key]: next}
 }
 
+const valid = n => Number.isFinite(n) && n >= 0
+const id = model => `${model.providerID}/${model.id}`
+
+/** Combine manual ratings with verified test/build outcomes (verification/v1). */
+export function mergeEvidence(feedbackStats, verificationStats) {
+  const merged = {}
+  for (const [key, value] of Object.entries(feedbackStats ?? {})) {
+    if (valid(value?.positive) && valid(value?.negative)) merged[key] = {positive:value.positive, negative:value.negative}
+  }
+  for (const [key, value] of Object.entries(verificationStats ?? {})) {
+    const base = key.replace(/:(?:test|build)$/, '')
+    if (base === key || !valid(value?.passed) || !valid(value?.failed)) continue
+    const old = merged[base] ?? {positive:0, negative:0}
+    merged[base] = {positive:old.positive + value.passed, negative:old.negative + value.failed}
+  }
+  return merged
+}
+
+export function ratingCount(stats, tier, model) {
+  const entry = stats?.[`${tier}:${id(model)}`]
+  return entry && valid(entry.positive) && valid(entry.negative) ? entry.positive + entry.negative : 0
+}
+
+/** Beta(1,1) smoothing: avoid 100% certainty from a tiny sample. */
+export function betaScore(stats, tier, model) {
+  const entry = stats?.[`${tier}:${id(model)}`]
+  return ((entry?.positive ?? 0) + 1) / (ratingCount(stats, tier, model) + 2)
+}
+
 export function chooseByFeedback(models, tier, stats, minimumRatings=3) {
-  const candidates = models.map(model => {
-    const entry = stats?.[`${tier}:${model.providerID}/${model.id}`]
-    if (!entry) return undefined
-    const count = entry.positive + entry.negative
-    if (count < minimumRatings) return undefined
-    // Beta(1,1) smoothing: avoid 100% certainty from a tiny sample.
-    return {model, count, score:(entry.positive + 1) / (count + 2)}
-  }).filter(Boolean)
   // Never let one rated model replace an otherwise unmeasured alternative.
-  if (candidates.length !== models.length || candidates.length < 2) return undefined
-  return candidates.toSorted((a,b) => b.score - a.score || b.count - a.count || `${a.model.providerID}/${a.model.id}`.localeCompare(`${b.model.providerID}/${b.model.id}`))[0]?.model
+  if (models.length < 2 || models.some(m => ratingCount(stats, tier, m) < minimumRatings)) return undefined
+  return models.toSorted((a,b) =>
+    betaScore(stats, tier, b) - betaScore(stats, tier, a) ||
+    ratingCount(stats, tier, b) - ratingCount(stats, tier, a) ||
+    id(a).localeCompare(id(b)))[0]
+}
+
+/**
+ * Bounded ε-greedy exploration. Without it the baseline model is the only one
+ * that ever gets rated and feedback could never take effect. Exploration starts
+ * only after the baseline itself has enough evidence and stops once every
+ * candidate has it, so unrated sessions stay deterministic.
+ */
+export function explore(models, tier, stats, baseline, {rate=0.1, random=Math.random, minimumRatings=3} = {}) {
+  if (!baseline || models.length < 2 || !(rate > 0)) return undefined
+  if (ratingCount(stats, tier, baseline) < minimumRatings) return undefined
+  const underRated = models.filter(m => ratingCount(stats, tier, m) < minimumRatings)
+  if (!underRated.length || random() >= rate) return undefined
+  return underRated.toSorted((a,b) => ratingCount(stats, tier, a) - ratingCount(stats, tier, b))[0]
 }

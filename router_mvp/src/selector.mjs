@@ -1,4 +1,4 @@
-import { chooseByFeedback } from './feedback.mjs'
+import { chooseByFeedback, explore, mergeEvidence } from './feedback.mjs'
 import { chooseByProfile } from './performance-profiles.mjs'
 
 export function selectModel(models, options = {}) {
@@ -11,9 +11,17 @@ export function selectModel(models, options = {}) {
     requiresImage = false,
     taskTier = 'simple',
     feedbackStats,
+    verificationStats,
     transportStats,
     fallbackModel,
+    modelProfiles,
+    exploration = 0.1,
+    random = Math.random,
   } = options;
+  // Manual ratings and verified test/build outcomes both count as evidence.
+  const evidence = mergeEvidence(feedbackStats, verificationStats);
+  const exploreOr = (pool, baseline) =>
+    explore(pool, taskTier, evidence, baseline, {rate: exploration, random}) ?? baseline;
   const allowed = new Set(allowedProviders);
   const modelAllowlist = new Set(allowedModels);
   const eligible = models.filter((model) => {
@@ -47,8 +55,8 @@ export function selectModel(models, options = {}) {
   // Unknown-cost candidates do not outrank priced candidates. If all prices
   // are unknown, the caller should preserve its selected model instead.
   if (!eligible.some((m) => Number.isFinite(cost(m)))) {
-    const profiled = chooseByProfile(eligible, taskTier, feedbackStats);
-    if (profiled) return profiled;
+    const profiled = chooseByProfile(eligible, taskTier, evidence, modelProfiles);
+    if (profiled) return exploreOr(eligible, profiled);
     // The trusted configured default is permitted only after all safety filters.
     return eligible.find(m => m.providerID === fallbackModel?.providerID && m.id === (fallbackModel?.id ?? fallbackModel?.modelID));
   }
@@ -60,9 +68,12 @@ export function selectModel(models, options = {}) {
   // Price is only a provisional capacity proxy, not proof of model quality.
   // Unknown-price candidates remain excluded from automatic escalation.
   const priced = ranked.filter(m => Number.isFinite(cost(m)));
-  const evaluated = chooseByFeedback(priced, taskTier, feedbackStats);
+  const evaluated = chooseByFeedback(priced, taskTier, evidence);
   if (evaluated) return evaluated;
-  if (taskTier === 'complex') return priced.at(-1);
-  if (taskTier === 'medium') return priced[Math.floor((priced.length - 1) / 2)];
-  return priced[0];
+  // The upper tier is bounded by the mandatory allowedModels list in the plugin;
+  // the selector never reaches beyond what was explicitly approved.
+  const baseline = taskTier === 'complex' ? priced.at(-1)
+    : taskTier === 'medium' ? priced[Math.floor((priced.length - 1) / 2)]
+    : priced[0];
+  return exploreOr(priced, baseline);
 }

@@ -1,14 +1,13 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [{"package":"..","options":{"allowedModels":[
-    "local/large",
-    "local/small",
-    "local/mid"
-  ]}}],
+  "plugins": [{"package":"..","options":{
+    "allowedModels": ["local/large", "local/small", "local/mid"],
+    "modelProfiles": {"local/small": "simple", "local/mid": "medium", "local/large": "complex"}
+  }}],
   "model": "local/mid",
   "providers": {
     "local": {
-      "name": "Offline internal Model Profile Test",
+      "name": "Offline Model Profile Test",
       "env": ["MOCK_API_KEY"],
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {"baseURL":"http://127.0.0.1:18083/v1"},

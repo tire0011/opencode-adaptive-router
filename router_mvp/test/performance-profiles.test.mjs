@@ -1,15 +1,22 @@
 import {test} from 'node:test';
 import {strict as assert} from 'node:assert';
 import {selectModel} from '../src/selector.mjs';
+import {chooseByProfile} from '../src/performance-profiles.mjs';
 
 const ids = ['small','mid','large'];
 const models = ids.map(id => ({providerID:'local',id,capabilities:{tools:true},cost:[],enabled:true}));
-const options = {currentProvider:'local',allowedModels:ids.map(id=>`local/${id}`),fallbackModel:{providerID:'local',id:ids[1]}};
+const modelProfiles = {'local/small':'simple','local/mid':'medium','local/large':'complex'};
+const options = {currentProvider:'local',allowedModels:ids.map(id=>`local/${id}`),fallbackModel:{providerID:'local',id:ids[1]},modelProfiles};
 
-test('unpriced internal profiles provide provisional task-tier defaults', () => {
+test('configured profiles provide provisional task-tier defaults for unpriced models', () => {
   for (const [tier, expected] of [['simple',ids[0]],['medium',ids[1]],['complex',ids[2]]]) {
     assert.equal(selectModel(models,{...options,taskTier:tier})?.id,expected);
   }
+});
+
+test('no profiles are built in', () => {
+  assert.equal(chooseByProfile(models,'simple',{}),undefined);
+  assert.equal(selectModel(models,{...options,modelProfiles:undefined,taskTier:'complex'})?.id,ids[1]);
 });
 
 test('comparative user feedback overrides provisional profiles', () => {
@@ -27,5 +34,5 @@ test('tool support and explicit allowlist override performance profiles', () => 
   assert.equal(selectModel(limited,{...options,taskTier:'simple'})?.id,ids[1]);
   assert.equal(selectModel(models.map(m=>({...m,capabilities:{}})),options),undefined);
   assert.equal(selectModel(models,{...options,allowedModels:[`local/${ids[1]}`],taskTier:'complex'})?.id,ids[1]);
-  assert.equal(selectModel(models,{...options,currentProvider:'anthropic'}),undefined);
+  assert.equal(selectModel(models,{...options,currentProvider:'external'}),undefined);
 });

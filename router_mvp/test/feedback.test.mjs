@@ -1,6 +1,6 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
-import {recordFeedback, chooseByFeedback} from '../src/feedback.mjs'
+import {recordFeedback, chooseByFeedback, mergeEvidence, explore} from '../src/feedback.mjs'
 import {selectModel} from '../src/selector.mjs'
 
 const models = [['small',1],['large',10]].map(([id,n]) => ({providerID:'mock',id,cost:[{input:n,output:n}],capabilities:{tools:true}}))
@@ -31,4 +31,22 @@ test('sufficient comparative feedback can override a price-based tier', () => {
 })
 test('malformed decisions cannot poison statistics', () => {
   assert.deepEqual(recordFeedback({}, {tier:'other',model:{id:'x',providerID:'p'}}, true), {})
+})
+test('verified test/build outcomes count as evidence', () => {
+  const verification = {
+    'simple:mock/small:test':{passed:0,failed:4},
+    'simple:mock/large:build':{passed:4,failed:0},
+  }
+  assert.deepEqual(mergeEvidence({}, verification)['simple:mock/large'], {positive:4,negative:0})
+  assert.equal(selectModel(models,{currentProvider:'mock',taskTier:'simple',verificationStats:verification}).id,'large')
+})
+test('bounded exploration lets unrated models collect ratings', () => {
+  let stats = {}
+  for (let i=0;i<3;i++) stats = recordFeedback(stats, decision('small','simple'), true)
+  const base = {currentProvider:'mock',taskTier:'simple',feedbackStats:stats}
+  assert.equal(selectModel(models,{...base,random:() => 0.05}).id,'large')
+  assert.equal(selectModel(models,{...base,random:() => 0.5}).id,'small')
+  assert.equal(selectModel(models,{...base,exploration:0,random:() => 0}).id,'small')
+  // No exploration before the baseline itself has evidence.
+  assert.equal(explore(models,'simple',{},models[0],{random:() => 0}),undefined)
 })

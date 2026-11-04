@@ -38,7 +38,11 @@ export default Plugin.define({
       ? ctx.options.allowedModels.filter((value): value is string => typeof value === 'string')
       : []
     const crossProvider = ctx.options.crossProvider === true && allowedProviders.length > 0
-    await debugLog('plugin.setup', {allowedModels, allowedProviders, crossProvider})
+    // Optional starting hypotheses for unpriced models: {"provider/model": "simple"|"medium"|"complex"}.
+    const modelProfiles = Object.fromEntries(Object.entries(
+      typeof ctx.options.modelProfiles === 'object' && ctx.options.modelProfiles !== null ? ctx.options.modelProfiles : {},
+    ).filter(([, tier]) => tier === 'simple' || tier === 'medium' || tier === 'complex'))
+    await debugLog('plugin.setup', {allowedModels, allowedProviders, crossProvider, profiles:Object.keys(modelProfiles).length})
     let verificationWrite = Promise.resolve()
     await ctx.tool.hook('execute.after', async (event) => {
       if (event.status !== 'completed') return
@@ -136,6 +140,11 @@ export default Plugin.define({
         return
       }
       if (mode === 'off') return
+      // No hidden spending: Auto only ever picks from an explicit model allowlist.
+      if (!allowedModels.length) {
+        await debugLog('routing.blocked', {reason:'allowedModels not configured'})
+        throw new Error('[adaptive-router] Auto requires an explicit allowedModels list in the plugin options')
+      }
 
       // Model.Info is produced by OpenCode's active-model registry, not by
       // a manually maintained provider/model mapping.
@@ -166,8 +175,15 @@ export default Plugin.define({
       await debugLog('task.classified', {tier:classified.tier, confidence:classified.confidence, source:classified.source})
       const stats = await ctx.storage.get('stats/v1')
       const transportStats = await ctx.storage.get('transport/v1')
+      const verificationStats = await ctx.storage.get('verification/v1')
       const attachments = event.prompt.files ?? []
-      const requiresImage = attachments.some(attachment => /\.(?:png|jpe?g|webp|gif|bmp)$/i.test(attachment.name ?? attachment.uri))
+      // Prefer the declared MIME type; the file extension is only a fallback.
+      const requiresImage = attachments.some(attachment => {
+        const mime = (attachment as {mime?: unknown}).mime
+        return typeof mime === 'string' && mime
+          ? mime.toLowerCase().startsWith('image/')
+          : /\.(?:png|jpe?g|webp|gif|bmp)$/i.test(attachment.name ?? attachment.uri)
+      })
       stage = 'model.select'
       const selected = selectModel(models, {
         currentProvider: providerID,
@@ -177,7 +193,9 @@ export default Plugin.define({
         fallbackModel: defaultModel,
         taskTier: classified.tier,
         feedbackStats: stats,
+        verificationStats,
         transportStats,
+        modelProfiles,
         requiresImage,
       })
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [".."],
+  "plugins": [{"package":"..","options":{"allowedModels":["mock/notools"]}}],
   "model": "mock/notools",
   "providers": {
     "mock": {

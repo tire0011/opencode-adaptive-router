@@ -1,6 +1,8 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [".."],
+  "plugins": [{"package":"..","options":{"allowedModels":[
+    "mock/pricey","mock/cheap","mock/ultra","mock/notools","mock/unknown","outside/external"
+  ]}}],
   "model": "mock/pricey",
   "providers": {
     "mock": {

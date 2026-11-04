@@ -47,20 +47,27 @@ for (const label of labels) for (const sample of training[label]) for (const wor
 
 // High-signal intent patterns complement the tiny word-frequency model. They
 // keep commonplace prompts out of the unknown-word fallback without an LLM call.
+// `\b` does not treat umlauts as word characters in JS regex, so patterns use
+// Unicode-aware boundaries: B = start of word, E = end of word.
+const B = '(?<![\\p{L}\\p{N}])', E = '(?![\\p{L}\\p{N}])'
+const w = (...parts) => new RegExp(parts.join(''), 'iu')
+
+// Single topic words (e.g. "architecture", "readme") must not decide the tier
+// alone; complex signals need scope or a design/migration intent.
 const signals = {
   simple: [
-    /\b(?:reply|respond|answer|say|print|output)\s+(?:with\s+)?(?:exactly\s+)?(?:ok|yes|no|hello|one word|a single word)\b/i,
-    /\b(?:typo|spelling|punctuation|whitespace|indentation|formatting|rename|comment|readme)\b/i,
-    /\b(?:tippfehler|rechtschreibung|formatierung|umbenennen|beschriftung)\b/i,
+    w(B, '(?:reply|respond|answer|say|print|output)\\s+(?:with\\s+)?(?:exactly\\s+)?(?:ok|yes|no|hello|one word|a single word)', E),
+    w(B, '(?:typos?|spelling|punctuation|whitespace|indentation|formatting|rename|tippfehler|rechtschreibung|formatierung|umbenennen|beschriftung)', E),
   ],
   medium: [
-    /\b(?:implement|implementiere|refactor|refaktoriere|fix|debug|behebe|repair|add|ergänze)\b.{0,65}\b(?:feature|endpoint|api|parser|validation|tests?|function|method|funktion|methode|test|validierung)\b/i,
-    /\b(?:unit tests?|integration tests?|error handling|rest api|json parser|endpunkt)\b/i,
+    w(B, '(?:implement|implementiere|refactor|refaktoriere|fix|debug|behebe|repair|add|ergänze)', E, '.{0,65}', B, '(?:feature|endpoint|api|parser|validation|tests?|function|method|funktion|methode|validierung)', E),
+    w(B, '(?:unit tests?|integration tests?|error handling|rest api|json parser|endpunkt)', E),
   ],
   complex: [
-    /\b(?:distributed|verteilte[ns]?|multi[- ]service|system[- ]wide|codebase[- ]wide|architecture|architektur|race condition|deadlocks?|threat model)\b/i,
-    /\b(?:migrat(?:e|ion)|migration|redesign|neugestaltung|übergreifend)\b.{0,85}\b(?:database|schema|services?|projects?|codebase|datenbank|projekte|system)\b/i,
-    /\b(?:across|über|mehrere)\b.{0,50}\b(?:services?|modules?|projects?|systeme|projekte|module)\b/i,
+    w(B, '(?:distributed|verteilte[ns]?|multi[- ]service|system[- ]wide|codebase[- ]wide|race conditions?|deadlocks?|threat model)', E),
+    w(B, '(?:design|redesign|entwirf|entwerfe|plan|review)', E, '.{0,40}', B, '(?:architecture|architektur)', E),
+    w(B, '(?:migrat(?:e|ion)|redesign|neugestaltung|übergreifende?[nrs]?)', E, '.{0,85}', B, '(?:database|schema|services?|projects?|codebase|datenbank|projekte|system)', E),
+    w(B, '(?:across|mehrere|übergreifende?[nrs]?)', E, '.{0,50}', B, '(?:services?|modules?|projects?|systeme|projekte|module)', E),
   ],
 }
 

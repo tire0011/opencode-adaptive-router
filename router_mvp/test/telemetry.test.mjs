@@ -28,12 +28,13 @@ test('repeated model HTTP failures trigger a healthy-model fallback', () => {
   const expired={'mock/sick':{responses:3,httpErrors:3,lastErrorAt:Date.now()-360000}}
   assert.equal(selectModel(models,{currentProvider:'mock',transportStats:expired}).id,'sick')
 })
-test('unpriced internal profile fails over only within approved models and recovers', () => {
+test('unpriced configured profile fails over only within approved models and recovers', () => {
   const models = ['small','mid','large'].map(id => ({
     providerID:'local', id, capabilities:{tools:true}, enabled:true,
   }))
   const options = {
     currentProvider:'local', taskTier:'simple',
+    modelProfiles:{'local/small':'simple','local/mid':'medium','local/large':'complex'},
     allowedModels:models.map(model => `${model.providerID}/${model.id}`),
   }
   const first = selectModel(models, options)

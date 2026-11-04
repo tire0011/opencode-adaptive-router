@@ -58,7 +58,7 @@ try {
   await verify('Auto picks cheapest tool-capable model', ['--model','adaptive-router/auto'], 'ultra')
   await verify('Unrecognized prompt chooses conservative middle tier', ['--model','adaptive-router/auto'], 'cheap', 'xyzzy plugh')
   await verify('Medium coding task chooses middle tier', ['--model','adaptive-router/auto'], 'cheap', 'implement feature add endpoint tests')
-  await verify('Complex task chooses highest priced tier', ['--model','adaptive-router/auto'], 'pricey', 'design distributed system architecture across services')
+  await verify('Complex task chooses highest priced approved tier', ['--model','adaptive-router/auto'], 'pricey', 'design distributed system architecture across services')
   await verify('Default without Auto stays unchanged', [], 'pricey')
   await verify('Explicit manual selection wins', ['--model','mock/cheap'], 'cheap')
   const session = `ses_e2erouter${Date.now().toString(36)}000`
@@ -82,9 +82,9 @@ try {
     const first = (await models()).length
     const result = await run(['--model','adaptive-router/auto'], 'profiles', prompt)
     const observed = (await models()).slice(first)
-    assert.equal(result.code, 0, `${label} internal profile request failed`)
+    assert.equal(result.code, 0, `${label} configured profile request failed`)
     assert(observed.length > 0 && observed.every(id => id === expected), `${label}: expected ${expected}, got ${observed}`)
-    console.log(`[PASS] ${label} unpriced internal profile: ${observed.join(', ')}`)
+    console.log(`[PASS] ${label} unpriced configured profile: ${observed.join(', ')}`)
   }
 
   const before = (await models()).length
