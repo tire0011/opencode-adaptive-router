@@ -107,6 +107,27 @@ Unit tests: `npm test` (Node.js 20+; no dependencies required for the selector).
 
 ### Experimental structured classifier (not active)
 
+### Local tiny-model benchmark (not active)
+
+Compare a **locally installed** small language model against both offline
+classifiers on the 36 synthetic `unseen-task-cases.mjs` tasks. The script uses
+only Ollama at `127.0.0.1:11434`, forces structured JSON output, and reports
+accuracy and p50/p95 latency. It does not change OpenCode routing or send
+code to any external service. Model downloads are separate and optional.
+
+PowerShell (Ollama must already be running):
+
+```powershell
+ollama pull qwen3:0.6b
+npm run eval:local-llm -- --model=qwen3:0.6b
+```
+
+Optionally compare `qwen3:1.7b` or `gemma3:1b`. This first run still needs to
+be performed on a machine with Ollama; no model accuracy or latency has been
+measured by the repository maintainers yet. The corpus is synthetic and has
+already been inspected during rule development; evaluate real-world
+generalization on a new permission-safe dataset after choosing a model.
+
 Run `npm run eval:shadow` to compare the production prompt classifier against
 an isolated offline prototype that assesses **intent**, **scope**, and **risk**.
 Pass `-- --json` to inspect individual disagreements or `-- --holdout` to
