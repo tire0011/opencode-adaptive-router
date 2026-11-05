@@ -132,6 +132,22 @@ penalties were **50 versus 35**. This is a one-time synthetic check, not a
 representative or externally validated sample; further tuning must use a
 different dataset.
 
+### Structured classifier v2 experiment
+
+The v2 shadow prototype tests broader categories (request verbs instead of
+incidental nouns, cosmetic-only edits, systemic impact, and high-risk work).
+It is **not** connected to live routing. Run
+`node eval/compare-classifiers.mjs --fresh` to reproduce a frozen 30-task
+checkpoint authored before its first evaluation.
+
+**First run: current 16/30 versus structured v2 15/30.** The structured v2
+classifier underestimated 9/30 tasks and overestimated 6/30, with 51 weighted
+penalty units (current: 9 under, 5 over, 49 units). In particular, both
+rule-based approaches missed complex tasks phrased without their expected
+keywords. The development performance of the revised rules cannot overcome
+this negative generalization result. Do not retune on this fresh checkpoint;
+the next experiment should evaluate a semantic classifier with new data.
+
 From `router_mvp/`, run `npm run eval:benchmark` for a 100-prompt synthetic
 benchmark (30 simple / 40 medium / 30 complex). Use
 `node eval/benchmark.mjs --json` for a machine-readable report with a confusion
