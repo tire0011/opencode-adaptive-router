@@ -32,6 +32,18 @@ test('short explanations stay simple and bounded implementation stays medium', (
   assert.equal(classifyTask('Explain the difference between let and const briefly.').tier, 'simple')
   assert.equal(classifyTask('Add optimistic concurrency checks to one update operation.').tier, 'medium')
 })
+test('generic scope words and documentation context do not force complex', () => {
+  for (const prompt of [
+    'Fix the typo in all project files',
+    'Rename the variable in every service file',
+    'Fix typo in the architecture section of the README',
+  ]) assert.equal(classifyTask(prompt).tier,'simple',prompt)
+  assert.notEqual(classifyTask('Update all project dependencies to latest patch').tier,'complex')
+  assert.notEqual(classifyTask('Plan the sprint review').tier,'complex')
+  assert.equal(classifyTask('Migrating the database across services').tier,'complex')
+  assert.equal(classifyTask('Update protocol for all external clients').tier,'complex')
+  assert.notEqual(classifyTask('Überarchitektur im Kommentar korrigieren').tier,'complex')
+})
 test('tier routing excludes no-tool models at all complexity levels', () => {
   const models = [
     {providerID:'mock',id:'notools',capabilities:{tools:false},cost:[{input:.01,output:.01}]},

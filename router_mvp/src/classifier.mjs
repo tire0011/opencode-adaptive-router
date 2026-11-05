@@ -62,13 +62,21 @@ const signals = {
     /\b(?:unit tests?|integration tests?|error handling|rest api|json parser|endpunkt)\b/i,
   ],
   complex: [
-    /\b(?:hundreds|thousands|all|every)\b.{0,65}\b(?:clients?|consumers?|repositories|systems?|services?|projects?)\b/i,
+    /\b(?:hundreds|thousands|\d{2,})\b.{0,65}\b(?:clients?|consumers?|repositories|systems?|services?|projects?)\b/i,
+    /\b(?:all|every)\b.{0,65}\b(?:clients?|consumers?)\b/i,
     /\b(?:global failover|shared across services|multiple processes|replicated data|microservices|cascading failures)\b/i,
-    /\b(?:distributed|verteilte[ns]?|multi[- ]service|system[- ]wide|codebase[- ]wide|architecture|architektur|race condition|deadlocks?|threat model)\b/i,
-    /\b(?:migrat(?:e|ion)|migration|redesign|neugestaltung|übergreifend)\b.{0,85}\b(?:database|schema|services?|projects?|codebase|datenbank|projekte|system)\b/i,
+    /\b(?:distributed|verteilte[ns]?|multi[- ]service|system[- ]wide|codebase[- ]wide|race condition|deadlocks?|threat model)\b/i,
+    /\b(?:migrat(?:e|ing|ion)|redesign|neugestaltung|übergreifend)\b.{0,85}\b(?:database|schema|services?|projects?|codebase|datenbank|projekte|system)\b/i,
     /\b(?:across|über|mehrere)\b.{0,50}\b(?:services?|modules?|projects?|systeme|projekte|module)\b/i,
   ],
 }
+
+// JavaScript's \b uses ASCII word characters, splitting words with umlauts.
+// Replace it with a boundary based on Unicode letters, digits, and underscore.
+const word = '[\\p{L}\\p{N}_]'
+const boundary = `(?:(?<=${word})(?!${word})|(?<!${word})(?=${word}))`
+for (const tier of labels) signals[tier] = signals[tier].map(pattern =>
+  new RegExp(pattern.source.replaceAll('\\b', boundary), `${pattern.flags}u`))
 
 function classifySignals(text) {
   const matches = Object.fromEntries(labels.map(tier => [tier, signals[tier].filter(pattern => pattern.test(text)).length]))
@@ -95,5 +103,9 @@ export function classifyTask(text) {
   const probabilities = scores.map(score => Math.exp(score - Math.max(...scores)))
   const sum = probabilities.reduce((a, b) => a + b, 0)
   const ranked = labels.map((tier, i) => ({tier, confidence: probabilities[i] / sum})).sort((a,b) => b.confidence - a.confidence)
+  // A couple of generic words such as "plan" and "review" do not establish
+  // system-wide scope; explicit complexity signals remain authoritative.
+  if (ranked[0].tier === 'complex' && new Set(recognized).size < 3)
+    return {tier:'medium',confidence:0,source:'fallback'}
   return {...ranked[0], source: 'naive-bayes'}
 }

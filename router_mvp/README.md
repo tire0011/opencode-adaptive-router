@@ -102,7 +102,8 @@ Run `npm run eval:classifier` for a separate 12-prompt English/German smoke matr
 5. Validate the provisional internal profiles using a shared coding benchmark and local task/quality ratings; diversify the task-classifier training set, calibrate confidence, and evaluate multilingual ambiguous prompts.
 
 Unit tests: `npm test` (Node.js 20+; no dependencies required for the selector).
-# Offline routing benchmark
+
+## Offline routing benchmark
 
 From `router_mvp/`, run `npm run eval:benchmark` for a 100-prompt synthetic
 benchmark (30 simple / 40 medium / 30 complex). Use
@@ -113,14 +114,14 @@ Run `node eval/benchmark.mjs --holdout` for 30 additional synthetic prompts
 (10 per tier) kept separate from the development examples. After classifier
 signal tuning, the development score was **98/100 (98%)**, but the first
 holdout evaluation reached only **20/30 (66.7%)**, with **30% fallback**.
-This gap is evidence of overfitting to the development examples; do not tune
-against the holdout and continue reporting it as independent performance.
+That was the first evaluation of the #5 classifier, not a lasting guarantee.
+Later conservative scope fixes change these scores; do not use the same holdout
+as a tuning target or present it as a fresh independent test.
 
 Prompts and reference labels are manually curated, not inferred from router
 output. They include English/German phrasing and potentially misleading scope
 cues. They are **not** representative samples of production traffic; results
 must not be presented as generalized accuracy. Future tuning needs a fresh
 evaluation set; reusing the current holdout for fixes would contaminate it.
-No provider calls, credentials, or
-proprietary task data are involved.
+No provider calls, credentials, or proprietary task data are involved.
 

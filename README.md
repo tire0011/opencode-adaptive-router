@@ -2,7 +2,7 @@
 
 **Local-first, self-configuring model selection for OpenCode.**
 
-> Status: **experimental alpha prototype** in [router_mvp](router_mvp/README.md), verified against OpenCode v2.2.5 with 35 passing unit tests, a local fake-provider E2E suite, and manual Windows CLI/TUI routing and feedback tests. Not validated for production or confidential workloads.
+> Status: **experimental alpha prototype** in [router_mvp](router_mvp/README.md), verified against OpenCode v2.2.5 with a passing unit-test suite, a local fake-provider E2E suite, and manual Windows CLI/TUI routing and feedback tests. Not validated for production or confidential workloads.
 
 OpenCode supports many providers, but selecting the best connected model is still largely a manual decision. This project explores an opt-in **Auto** model that discovers eligible models, evaluates their capabilities, routes tasks, and improves its choices using real outcome signals.
 
