@@ -110,7 +110,11 @@ Unit tests: `npm test` (Node.js 20+; no dependencies required for the selector).
 Run `npm run eval:shadow` to compare the production prompt classifier against
 an isolated offline prototype that assesses **intent**, **scope**, and **risk**.
 Pass `-- --json` to inspect individual disagreements or `-- --holdout` to
-evaluate the existing synthetic holdout. This script does **not** route any
+evaluate the existing synthetic holdout. `-- --unseen` evaluates 36 newly
+authored, balanced synthetic tasks with an asymmetric penalty matrix (where
+underestimating complex work costs more than overestimating simple work).
+Penalties are illustrative relative units, **not** real costs or success rates.
+This script does **not** route any
 requests, change model settings, call a provider, or store prompt text.
 
 The first development-set comparison was **94/100** for the current classifier
@@ -119,6 +123,14 @@ versus **70/100** for the structured prototype. On the previously examined
 The latter is deliberately experimental; its confidence is an uncalibrated heuristic. The original
 holdout has already been examined during earlier development, so neither
 dataset provides a fresh independent estimate of real-world accuracy.
+
+Before the first `--unseen` run, the 36 examples and reference labels were
+fixed without evaluating either classifier on them. The first scores were
+**20/36** (current) versus **25/36** (structured), with **9 versus 6**
+underestimates and **7 versus 5** overestimates, respectively. Weighted
+penalties were **50 versus 35**. This is a one-time synthetic check, not a
+representative or externally validated sample; further tuning must use a
+different dataset.
 
 From `router_mvp/`, run `npm run eval:benchmark` for a 100-prompt synthetic
 benchmark (30 simple / 40 medium / 30 complex). Use
