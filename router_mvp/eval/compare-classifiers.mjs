@@ -3,10 +3,13 @@ import {assessTask} from '../src/structured-classifier.mjs'
 import {cases as development} from './task-cases.mjs'
 import {cases as holdout} from './holdout-cases.mjs'
 import {cases as unseen} from './unseen-task-cases.mjs'
+import {cases as fresh} from './fresh-task-cases.mjs'
 
-const dataset = process.argv.includes('--unseen') ? 'unseen-synthetic'
+const dataset = process.argv.includes('--fresh') ? 'fresh-synthetic'
+  : process.argv.includes('--unseen') ? 'unseen-synthetic'
   : process.argv.includes('--holdout') ? 'holdout-synthetic' : 'development-synthetic'
-const cases = dataset === 'unseen-synthetic' ? unseen
+const cases = dataset === 'fresh-synthetic' ? fresh
+  : dataset === 'unseen-synthetic' ? unseen
   : dataset === 'holdout-synthetic' ? holdout : development
 const rows = Object.entries(cases).flatMap(([expected,prompts]) => prompts.map(prompt => ({
   expected, prompt, old:classifyTask(prompt).tier, next:assessTask(prompt),
