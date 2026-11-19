@@ -9,6 +9,7 @@
     "test:e2e": "node e2e/run.mjs",
     "eval:classifier": "node eval/classifier-eval.mjs",
     "eval:shadow": "node eval/compare-classifiers.mjs",
+    "eval:local-llm": "node eval/benchmark-local-llm.mjs",
     "eval:benchmark": "node eval/benchmark.mjs"
   },
   "peerDependencies": { "@opencode/plugin": "*" },
